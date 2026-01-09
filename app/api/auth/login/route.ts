@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import sql, { initDb } from "@/lib/db";
+import db from "@/lib/db";
 import { comparePassword, hashPassword, signToken } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -7,7 +7,6 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
     try {
-        await initDb();
         const { username, password } = await req.json();
 
         if (!username || !password) {
@@ -24,23 +23,28 @@ export async function POST(req: NextRequest) {
             // Verify admin password
             if (password === adminPass) {
                 // Upsert admin into DB to ensure they exist
-                const { rows } = await sql`SELECT * FROM users WHERE username = ${username}`;
-                const existingAdmin = rows[0];
+                const existingAdmin = await db.user.findUnique({ where: { username } });
 
                 let adminId = existingAdmin?.id;
-
                 const hashedPassword = await hashPassword(password);
 
                 if (!existingAdmin) {
-                    const result = await sql`
-                    INSERT INTO users (username, password, role, expires_at, created_at)
-                    VALUES (${username}, ${hashedPassword}, 'admin', 253402300799999, ${Date.now()})
-                    RETURNING id
-                `;
-                    adminId = result.rows[0].id;
+                    const newAdmin = await db.user.create({
+                        data: {
+                            username,
+                            password: hashedPassword,
+                            role: "admin",
+                            expires_at: BigInt(253402300799999),
+                            created_at: BigInt(Date.now()),
+                        },
+                    });
+                    adminId = newAdmin.id;
                 } else {
                     // Update the password in DB to match the Env Var
-                    await sql`UPDATE users SET password = ${hashedPassword} WHERE id = ${existingAdmin.id}`;
+                    await db.user.update({
+                        where: { id: existingAdmin.id },
+                        data: { password: hashedPassword },
+                    });
                     adminId = existingAdmin.id;
                 }
 
@@ -60,8 +64,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Regular User Login
-        const { rows } = await sql`SELECT * FROM users WHERE username = ${username}`;
-        const user = rows[0];
+        const user = await db.user.findUnique({ where: { username } });
 
         if (!user) {
             return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });

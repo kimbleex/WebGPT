@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import sql from "@/lib/db";
+import db from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -23,31 +23,38 @@ export async function POST(req: NextRequest) {
         }
 
         // 1. Validate Token
-        const { rows: tokenRows } = await sql`SELECT * FROM tokens WHERE code = ${tokenCode} AND is_used = 0`;
-        const token = tokenRows[0];
+        const token = await db.token.findUnique({
+            where: { code: tokenCode }
+        });
 
-        if (!token) {
+        if (!token || token.is_used === 1) {
             return NextResponse.json({ error: "Invalid or used token" }, { status: 400 });
         }
 
         // 2. Get Current User Expiration
-        const { rows: userRows } = await sql`SELECT * FROM users WHERE id = ${userPayload.id}`;
-        const user = userRows[0];
+        const user = await db.user.findUnique({
+            where: { id: userPayload.id }
+        });
         if (!user) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
 
         // 3. Extend Expiration
-        // If currently expired, start from now. If not, add to existing.
         const userExpiresAt = Number(user.expires_at);
         const currentExpiry = userExpiresAt > Date.now() ? userExpiresAt : Date.now();
         const durationMs = token.duration_hours * 60 * 60 * 1000;
         const newExpiry = currentExpiry + durationMs;
 
-        await sql`UPDATE users SET expires_at = ${newExpiry} WHERE id = ${user.id}`;
+        await db.user.update({
+            where: { id: user.id },
+            data: { expires_at: BigInt(newExpiry) }
+        });
 
         // 4. Mark Token as Used
-        await sql`UPDATE tokens SET is_used = 1 WHERE code = ${tokenCode}`;
+        await db.token.update({
+            where: { code: tokenCode },
+            data: { is_used: 1 }
+        });
 
         return NextResponse.json({ success: true, expires_at: newExpiry });
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import sql from "@/lib/db";
+import db from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -17,8 +17,10 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ user: null });
         }
 
-        const { rows } = await sql`SELECT id, username, role, expires_at FROM users WHERE id = ${userPayload.id}`;
-        const user = rows[0];
+        const user = await db.user.findUnique({
+            where: { id: userPayload.id },
+            select: { id: true, username: true, role: true, expires_at: true }
+        });
 
         if (!user) {
             return NextResponse.json({ user: null });

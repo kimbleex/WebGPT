@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
-import sql from "@/lib/db";
+import db from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,8 +18,11 @@ export async function POST(req: NextRequest) {
         }
 
         // Check expiration from DB to be sure
-        const { rows } = await sql`SELECT expires_at FROM users WHERE id = ${userPayload.id}`;
-        const user = rows[0];
+        const user = await db.user.findUnique({
+            where: { id: userPayload.id },
+            select: { expires_at: true }
+        });
+
         if (!user || Number(user.expires_at) < Date.now()) {
             return NextResponse.json({ error: "Account expired. Please renew." }, { status: 403 });
         }

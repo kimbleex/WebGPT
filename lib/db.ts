@@ -1,34 +1,21 @@
-import { sql } from "@vercel/postgres";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import pg from "pg";
 
-// Initialize Schema
-export const initDb = async () => {
-    try {
-        // Users table
-        await sql`
-        CREATE TABLE IF NOT EXISTS users (
-          id SERIAL PRIMARY KEY,
-          username TEXT UNIQUE NOT NULL,
-          password TEXT NOT NULL,
-          role TEXT NOT NULL DEFAULT 'user',
-          expires_at BIGINT NOT NULL,
-          created_at BIGINT NOT NULL
-        )
-      `;
-
-        // Tokens table
-        await sql`
-        CREATE TABLE IF NOT EXISTS tokens (
-          code TEXT PRIMARY KEY,
-          duration_hours INTEGER NOT NULL,
-          is_used INTEGER NOT NULL DEFAULT 0,
-          created_by TEXT NOT NULL,
-          created_at BIGINT NOT NULL
-        )
-      `;
-        console.log("Database initialized successfully");
-    } catch (error) {
-        console.error("Database initialization error:", error);
-    }
+const prismaClientSingleton = () => {
+    const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+    const pool = new pg.Pool({ connectionString });
+    const adapter = new PrismaPg(pool);
+    return new PrismaClient({ adapter });
 };
 
-export default sql;
+declare global {
+    var prisma: undefined | ReturnType<typeof prismaClientSingleton>;
+}
+
+const db = globalThis.prisma ?? prismaClientSingleton();
+
+export default db;
+
+if (process.env.NODE_ENV !== "production") globalThis.prisma = db;
+

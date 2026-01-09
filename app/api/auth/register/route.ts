@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import sql, { initDb } from "@/lib/db";
+import db from "@/lib/db";
 import { hashPassword, signToken } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -7,7 +7,6 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
     try {
-        await initDb();
         const { username, password, token: tokenCode } = await req.json();
 
         if (!username || !password || !tokenCode) {
@@ -15,16 +14,19 @@ export async function POST(req: NextRequest) {
         }
 
         // 1. Validate Token
-        const { rows: tokenRows } = await sql`SELECT * FROM tokens WHERE code = ${tokenCode} AND is_used = 0`;
-        const token = tokenRows[0];
+        const token = await db.token.findUnique({
+            where: { code: tokenCode }
+        });
 
-        if (!token) {
+        if (!token || token.is_used === 1) {
             return NextResponse.json({ error: "Invalid or used token" }, { status: 400 });
         }
 
         // 2. Check if username exists
-        const { rows: userRows } = await sql`SELECT * FROM users WHERE username = ${username}`;
-        if (userRows.length > 0) {
+        const existingUser = await db.user.findUnique({
+            where: { username }
+        });
+        if (existingUser) {
             return NextResponse.json({ error: "Username already taken" }, { status: 400 });
         }
 
@@ -33,22 +35,28 @@ export async function POST(req: NextRequest) {
         const durationMs = token.duration_hours * 60 * 60 * 1000;
         const expiresAt = Date.now() + durationMs;
 
-        const result = await sql`
-        INSERT INTO users (username, password, role, expires_at, created_at)
-        VALUES (${username}, ${hashedPassword}, 'user', ${expiresAt}, ${Date.now()})
-        RETURNING id
-    `;
-        const userId = result.rows[0].id;
+        const newUser = await db.user.create({
+            data: {
+                username,
+                password: hashedPassword,
+                role: "user",
+                expires_at: BigInt(expiresAt),
+                created_at: BigInt(Date.now()),
+            }
+        });
 
         // 4. Mark Token as Used
-        await sql`UPDATE tokens SET is_used = 1 WHERE code = ${tokenCode}`;
+        await db.token.update({
+            where: { code: tokenCode },
+            data: { is_used: 1 }
+        });
 
         // 5. Auto Login
-        const authToken = signToken({ id: Number(userId), username, role: "user" });
+        const authToken = signToken({ id: Number(newUser.id), username, role: "user" });
         const response = NextResponse.json({
             success: true,
             user: {
-                id: Number(userId),
+                id: Number(newUser.id),
                 username,
                 role: "user",
                 expires_at: expiresAt
