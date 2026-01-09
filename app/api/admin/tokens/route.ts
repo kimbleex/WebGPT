@@ -39,6 +39,8 @@ export async function POST(req: NextRequest) {
     }
 }
 
+import { Token } from "@prisma/client";
+
 export async function GET(req: NextRequest) {
     try {
         const tokenCookie = req.cookies.get("token");
@@ -56,7 +58,7 @@ export async function GET(req: NextRequest) {
         });
 
         return NextResponse.json({
-            tokens: tokens.map(t => ({
+            tokens: tokens.map((t: Token) => ({
                 ...t,
                 created_at: Number(t.created_at)
             }))
