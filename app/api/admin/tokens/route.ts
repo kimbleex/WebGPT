@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
 }
 
-import { Token } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
     try {
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
         });
 
         return NextResponse.json({
-            tokens: tokens.map((t: Token) => ({
+            tokens: tokens.map((t: Prisma.TokenGetPayload<{}>) => ({
                 ...t,
                 created_at: Number(t.created_at)
             }))
