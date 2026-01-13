@@ -5,6 +5,7 @@ import AuthScreen from "./components/AuthScreen";
 import ChatInterface, { Message } from "./components/ChatInterface";
 import Sidebar from "./components/Sidebar";
 import AdminPanel from "./components/AdminPanel";
+import { loadSessions, saveSessions } from "@/lib/storage";
 
 interface Session {
   id: string;
@@ -38,27 +39,49 @@ export default function Home() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Load sessions from localStorage
+  // Load sessions from storage
   useEffect(() => {
-    const savedSessions = localStorage.getItem("webgpt_sessions");
-    if (savedSessions) {
+    const initStorage = async () => {
       try {
-        const parsed = JSON.parse(savedSessions);
-        setSessions(parsed);
-        if (parsed.length > 0) {
-          setActiveSessionId(parsed[0].id);
+        // 1. Try to load from IndexedDB
+        let savedSessions = await loadSessions();
+
+        // 2. Migration: If IndexedDB is empty, check localStorage
+        if (savedSessions.length === 0) {
+          const localData = localStorage.getItem("webgpt_sessions");
+          if (localData) {
+            try {
+              const parsed = JSON.parse(localData);
+              if (parsed.length > 0) {
+                console.log("Migrating sessions from localStorage to IndexedDB...");
+                await saveSessions(parsed);
+                savedSessions = parsed;
+                // Optional: localStorage.removeItem("webgpt_sessions"); 
+                // We'll keep it for safety for now, or remove it after confirmation
+              }
+            } catch (e) {
+              console.error("Failed to parse localStorage sessions", e);
+            }
+          }
+        }
+
+        if (savedSessions.length > 0) {
+          setSessions(savedSessions);
+          setActiveSessionId(savedSessions[0].id);
         }
       } catch (e) {
-        console.error("Failed to parse sessions", e);
+        console.error("Failed to load sessions from IndexedDB", e);
       }
-    }
+    };
+
+    initStorage();
   }, []);
 
-  // Save sessions to localStorage
+  // Save sessions to storage
   useEffect(() => {
-    if (sessions.length > 0) {
-      localStorage.setItem("webgpt_sessions", JSON.stringify(sessions));
-    }
+    saveSessions(sessions).catch((e: any) => {
+      console.error("Failed to save sessions to IndexedDB", e);
+    });
   }, [sessions]);
 
   const handleNewChat = useCallback(() => {
@@ -79,9 +102,6 @@ export default function Home() {
         if (activeSessionId === id) {
           setActiveSessionId(newSessions.length > 0 ? newSessions[0].id : null);
         }
-        if (newSessions.length === 0) {
-          localStorage.removeItem("webgpt_sessions");
-        }
         return newSessions;
       });
     }
@@ -97,7 +117,21 @@ export default function Home() {
         if (session.title === "New Chat" && newMessages.length > 0) {
           const firstUserMsg = newMessages.find(m => m.role === "user");
           if (firstUserMsg) {
-            title = firstUserMsg.content.slice(0, 30) + (firstUserMsg.content.length > 30 ? "..." : "");
+            let contentText = "";
+            if (typeof firstUserMsg.content === "string") {
+              contentText = firstUserMsg.content;
+            } else if (Array.isArray(firstUserMsg.content)) {
+              const textItem = firstUserMsg.content.find((item: any) => item.type === "text");
+              if (textItem) {
+                contentText = textItem.text;
+              } else {
+                contentText = "Image Analysis"; // Fallback for image-only
+              }
+            }
+
+            if (contentText) {
+              title = contentText.slice(0, 30) + (contentText.length > 30 ? "..." : "");
+            }
           }
         }
         return {
@@ -124,11 +158,11 @@ export default function Home() {
   }, []);
 
   if (loading) {
-    return <div className="h-screen w-full bg-[#0a0a0c] flex items-center justify-center text-white">Loading...</div>;
+    return <div className="h-screen w-full bg-[var(--background)] flex items-center justify-center text-[var(--foreground)]">Loading...</div>;
   }
 
   return (
-    <main className="flex h-screen w-full bg-[#0a0a0c] text-white overflow-hidden">
+    <main className="flex h-screen w-full bg-[var(--background)] text-[var(--foreground)] overflow-hidden">
       {!user ? (
         <AuthScreen onLogin={setUser} />
       ) : (
@@ -143,7 +177,7 @@ export default function Home() {
             user={user}
           />
 
-          <div className="flex-1 h-full relative flex flex-col min-w-0 bg-[#0a0a0c]">
+          <div className="flex-1 h-full relative flex flex-col min-w-0 bg-[var(--background)]">
             {activeSessionId ? (
               <ChatInterface
                 key={activeSessionId} // Force re-mount on session switch

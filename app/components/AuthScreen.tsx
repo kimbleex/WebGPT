@@ -53,50 +53,50 @@ export default function AuthScreen({ onLogin }: AuthScreenProps) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0a0c] bg-opacity-95 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--background)] bg-opacity-95 backdrop-blur-sm">
             {/* Language Switcher */}
             <div className="absolute top-4 right-4 flex space-x-2">
                 <button
                     onClick={() => setLanguage("en")}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${language === "en" ? "bg-white text-black" : "bg-white/10 text-gray-400 hover:text-white"}`}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${language === "en" ? "bg-[var(--accent-primary)] text-white" : "bg-[var(--hover-bg)] text-[var(--text-muted)] hover:text-[var(--foreground)]"}`}
                 >
                     EN
                 </button>
                 <button
                     onClick={() => setLanguage("cn")}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${language === "cn" ? "bg-white text-black" : "bg-white/10 text-gray-400 hover:text-white"}`}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${language === "cn" ? "bg-[var(--accent-primary)] text-white" : "bg-[var(--hover-bg)] text-[var(--text-muted)] hover:text-[var(--foreground)]"}`}
                 >
                     中文
                 </button>
             </div>
 
-            <div className="w-full max-w-md p-8 bg-[#1a1a1c] border border-white/10 rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="w-full max-w-md mx-4 p-6 sm:p-8 bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-300">
                 <div className="text-center mb-8">
                     <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
                         <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
                     </div>
-                    <h2 className="text-2xl font-bold text-white">
+                    <h2 className="text-2xl font-bold text-[var(--foreground)]">
                         {process.env.NEXT_PUBLIC_AUTH_TITLE || t("auth.defaultTitle")}
                     </h2>
-                    <p className="text-gray-400 text-sm mt-2">
+                    <p className="text-[var(--text-muted)] text-sm mt-2">
                         {mode === "login"
                             ? (process.env.NEXT_PUBLIC_AUTH_SUBTITLE || t("auth.defaultSubtitleLogin"))
                             : t("auth.defaultSubtitleRegister")}
                     </p>
                 </div>
 
-                <div className="flex mb-6 bg-black/20 p-1 rounded-lg">
+                <div className="flex mb-6 bg-[var(--hover-bg)] p-1 rounded-lg">
                     <button
                         onClick={() => setMode("login")}
-                        className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${mode === "login" ? "bg-white/10 text-white shadow-sm" : "text-gray-500 hover:text-gray-300"}`}
+                        className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${mode === "login" ? "bg-[var(--panel-bg)] text-[var(--foreground)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--foreground)]"}`}
                     >
                         {t("auth.login")}
                     </button>
                     <button
                         onClick={() => setMode("register")}
-                        className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${mode === "register" ? "bg-white/10 text-white shadow-sm" : "text-gray-500 hover:text-gray-300"}`}
+                        className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${mode === "register" ? "bg-[var(--panel-bg)] text-[var(--foreground)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--foreground)]"}`}
                     >
                         {t("auth.register")}
                     </button>
@@ -104,24 +104,24 @@ export default function AuthScreen({ onLogin }: AuthScreenProps) {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">{t("auth.username")}</label>
+                        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1 uppercase tracking-wider">{t("auth.username")}</label>
                         <input
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            className="w-full bg-[#0a0a0c] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                            className="w-full bg-[var(--background)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-[var(--foreground)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] transition-all"
                             placeholder={t("auth.usernamePlaceholder")}
                             required
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">{t("auth.password")}</label>
+                        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1 uppercase tracking-wider">{t("auth.password")}</label>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-[#0a0a0c] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                            className="w-full bg-[var(--background)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-[var(--foreground)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] transition-all"
                             placeholder={t("auth.passwordPlaceholder")}
                             required
                         />
@@ -129,12 +129,12 @@ export default function AuthScreen({ onLogin }: AuthScreenProps) {
 
                     {mode === "register" && (
                         <div>
-                            <label className="block text-xs font-medium text-gray-400 mb-1 uppercase tracking-wider">{t("auth.token")}</label>
+                            <label className="block text-xs font-medium text-[var(--text-muted)] mb-1 uppercase tracking-wider">{t("auth.token")}</label>
                             <input
                                 type="text"
                                 value={token}
                                 onChange={(e) => setToken(e.target.value)}
-                                className="w-full bg-[#0a0a0c] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono"
+                                className="w-full bg-[var(--background)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-[var(--foreground)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] transition-all font-mono"
                                 placeholder={t("auth.tokenPlaceholder")}
                                 required
                             />
@@ -150,7 +150,7 @@ export default function AuthScreen({ onLogin }: AuthScreenProps) {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                        className="w-full bg-[var(--accent-primary)] hover:opacity-90 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                     >
                         {loading ? t("auth.processing") : (mode === "login" ? t("auth.unlock") : t("auth.createAccount"))}
                     </button>

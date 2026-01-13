@@ -35,12 +35,19 @@ const translations = {
             renewFail: "Failed to renew",
             forever: "Forever",
             logout: "Logout",
+            theme: {
+                light: "Light Mode",
+                dark: "Dark Mode",
+            },
         },
         chat: {
             selectChat: "Select a chat or start a new one.",
             startChat: "Start New Chat",
             placeholder: "Type a message...",
             send: "Send",
+            thinking: "Thinking...",
+            imageOnly: "Currently only supports image analysis",
+            disclaimer: "AI can make mistakes. Consider checking important information.",
         },
         admin: {
             panel: "Admin Panel",
@@ -87,12 +94,19 @@ const translations = {
             renewFail: "续期失败",
             forever: "永久",
             logout: "退出登录",
+            theme: {
+                light: "亮色模式",
+                dark: "暗色模式",
+            },
         },
         chat: {
             selectChat: "选择一个对话或开始新的对话",
             startChat: "开始新对话",
             placeholder: "输入消息...",
             send: "发送",
+            thinking: "正在思考...",
+            imageOnly: "当前仅支持图片分析",
+            disclaimer: "AI 可能会犯错。请考虑核实重要信息。",
         },
         admin: {
             panel: "管理面板",

@@ -53,13 +53,13 @@ export default function LockScreen({ onUnlock }: LockScreenProps) {
     if (!isLocked) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md transition-all duration-500">
-            <div className="glass-panel w-full max-w-md p-8 rounded-2xl flex flex-col items-center space-y-6 animate-in fade-in zoom-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--background)] bg-opacity-60 backdrop-blur-md transition-all duration-500 p-4">
+            <div className="glass-panel w-full max-w-md p-6 sm:p-8 rounded-2xl flex flex-col items-center space-y-6 animate-in fade-in zoom-in duration-300">
                 <div className="text-center space-y-2">
                     <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
                         WebGPT
                     </h1>
-                    <p className="text-gray-400 text-sm">Enter access key to continue</p>
+                    <p className="text-[var(--text-muted)] text-sm">Enter access key to continue</p>
                 </div>
 
                 <form onSubmit={handleUnlock} className="w-full space-y-4">
@@ -72,8 +72,8 @@ export default function LockScreen({ onUnlock }: LockScreenProps) {
                                 setError(false);
                             }}
                             placeholder="Access Key"
-                            className={`w-full bg-white/5 border ${error ? "border-red-500/50" : "border-white/10"
-                                } rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all`}
+                            className={`w-full bg-[var(--hover-bg)] border ${error ? "border-red-500/50" : "border-[var(--glass-border)]"
+                                } rounded-xl px-4 py-3 text-[var(--foreground)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)]/50 focus:ring-1 focus:ring-[var(--accent-primary)]/50 transition-all`}
                             autoFocus
                         />
                     </div>
