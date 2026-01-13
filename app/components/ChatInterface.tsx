@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, memo, useMemo } from "react";
 import { MODELS } from "./ModelSelector";
 import ModelSelector from "./ModelSelector";
 import { useLanguage } from "@/lib/i18n";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toPng } from "html-to-image";
+
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { useTheme } from "@/lib/theme";
 
 export interface Message {
     role: "user" | "assistant";
@@ -22,6 +26,7 @@ interface ChatInterfaceProps {
 
 export default function ChatInterface({ accessPassword, initialMessages = [], onMessagesChange, user }: ChatInterfaceProps) {
     const { t } = useLanguage();
+    const { theme } = useTheme();
     const [messages, setMessages] = useState<Message[]>(initialMessages);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -242,10 +247,193 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const renderMessageContent = (content: any) => {
+    const getLanguageIcon = (lang: string) => {
+        const l = lang.toLowerCase();
+        // Python
+        if (l === "python" || l === "py") return (
+            <svg className="w-4 h-4 text-[#3776AB]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2zm0 2a8 8 0 100 16 8 8 0 000-16zm-1 2h2v2h-2V6zm0 4h2v6h-2v-6z" />
+            </svg>
+        );
+        // JavaScript
+        if (l === "javascript" || l === "js") return (
+            <svg className="w-4 h-4 text-[#F7DF1E]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 3h18v18H3V3zm14.5 15c.828 0 1.5-.672 1.5-1.5S18.328 15 17.5 15s-1.5.672-1.5 1.5.672 1.5 1.5 1.5zM12 15c.828 0 1.5-.672 1.5-1.5S12.828 12 12 12s-1.5.672-1.5 1.5.672 1.5 1.5 1.5z" />
+            </svg>
+        );
+        // TypeScript
+        if (l === "typescript" || l === "ts") return (
+            <svg className="w-4 h-4 text-[#3178C6]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 3h18v18H3V3zm14.5 15c.828 0 1.5-.672 1.5-1.5S18.328 15 17.5 15s-1.5.672-1.5 1.5.672 1.5 1.5 1.5zM12 15c.828 0 1.5-.672 1.5-1.5S12.828 12 12 12s-1.5.672-1.5 1.5.672 1.5 1.5 1.5z" />
+            </svg>
+        );
+        // HTML
+        if (l === "html") return (
+            <svg className="w-4 h-4 text-[#E34F26]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71L12 2z" />
+            </svg>
+        );
+        // CSS
+        if (l === "css") return (
+            <svg className="w-4 h-4 text-[#1572B6]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71L12 2z" />
+            </svg>
+        );
+        // Rust
+        if (l === "rust" || l === "rs") return (
+            <svg className="w-4 h-4 text-[#DEA584]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z" />
+            </svg>
+        );
+        // Go
+        if (l === "go" || l === "golang") return (
+            <svg className="w-4 h-4 text-[#00ADD8]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z" />
+            </svg>
+        );
+        // Java
+        if (l === "java") return (
+            <svg className="w-4 h-4 text-[#007396]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z" />
+            </svg>
+        );
+        // PHP
+        if (l === "php") return (
+            <svg className="w-4 h-4 text-[#777BB4]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z" />
+            </svg>
+        );
+        // Shell
+        if (l === "shell" || l === "bash" || l === "sh") return (
+            <svg className="w-4 h-4 text-[#4EAA25]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z" />
+            </svg>
+        );
+        // SQL
+        if (l === "sql") return (
+            <svg className="w-4 h-4 text-[#336791]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z" />
+            </svg>
+        );
+        // Markdown
+        if (l === "markdown" || l === "md") return (
+            <svg className="w-4 h-4 text-[#000000] dark:text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z" />
+            </svg>
+        );
+        // JSON
+        if (l === "json") return (
+            <svg className="w-4 h-4 text-[#000000] dark:text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 8V6a2 2 0 012-2h2M4 16v2a2 2 0 002 2h2M20 8V6a2 2 0 00-2-2h-2M20 16v2a2 2 0 01-2 2h-2" />
+            </svg>
+        );
+        // Default code icon
+        return (
+            <svg className="w-4 h-4 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+        );
+    };
+
+    const CodeBlock = memo(({ node, inline, className, children, theme, t, ...props }: any) => {
+        const [copied, setCopied] = useState(false);
+        const match = /language-(\w+)/.exec(className || "");
+        const language = match ? match[1] : "";
+        const content = String(children).replace(/\n$/, "");
+
+        const handleCopy = async () => {
+            try {
+                await navigator.clipboard.writeText(content);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            } catch (err) {
+                console.error("Failed to copy:", err);
+            }
+        };
+
+        if (inline) {
+            return (
+                <code className={className} {...props}>
+                    {children}
+                </code>
+            );
+        }
+
+        return (
+            <div className="code-block-wrapper">
+                <div className="code-block-header">
+                    <div className="flex items-center space-x-2">
+                        {getLanguageIcon(language)}
+                        <span className="language-label font-bold">{language || "code"}</span>
+                    </div>
+                    <button
+                        onClick={handleCopy}
+                        className={`copy-button ${copied ? "copied" : ""}`}
+                        title={copied ? "Copied!" : "Copy code"}
+                    >
+                        {copied ? (
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                        ) : (
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        )}
+                    </button>
+                </div>
+                <div className="code-block-content">
+                    <SyntaxHighlighter
+                        language={language}
+                        style={{
+                            ...(theme === "dark" ? vscDarkPlus : oneLight),
+                            'pre[class*="language-"]': {
+                                ...(theme === "dark" ? vscDarkPlus : oneLight)['pre[class*="language-"]'],
+                                background: "var(--code-bg)",
+                            },
+                            'code[class*="language-"]': {
+                                ...(theme === "dark" ? vscDarkPlus : oneLight)['code[class*="language-"]'],
+                                background: "var(--code-bg)",
+                            },
+                        }}
+                        showLineNumbers={true}
+                        PreTag="div"
+                        customStyle={{
+                            background: "var(--code-bg)",
+                            padding: "1rem",
+                            margin: 0,
+                        }}
+                        lineNumberStyle={{
+                            minWidth: "2.5em",
+                            paddingRight: "1em",
+                            color: "var(--text-muted)",
+                            opacity: 0.5,
+                            textAlign: "right",
+                            userSelect: "none",
+                        }}
+                        {...props}
+                    >
+                        {content}
+                    </SyntaxHighlighter>
+                </div>
+            </div>
+        );
+    });
+
+    CodeBlock.displayName = "CodeBlock";
+
+    const MessageContent = memo(({ content, theme, t }: { content: any, theme: string, t: any }) => {
+        const markdownComponents = useMemo(() => ({
+            code: (props: any) => <CodeBlock {...props} theme={theme} t={t} />,
+            pre: ({ children }: any) => <>{children}</>
+        }), [theme, t]);
+
         if (typeof content === "string") {
             return (
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownComponents}
+                >
                     {content}
                 </ReactMarkdown>
             );
@@ -255,7 +443,11 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             return content.map((item, i) => {
                 if (item.type === "text") {
                     return (
-                        <ReactMarkdown key={i} remarkPlugins={[remarkGfm]}>
+                        <ReactMarkdown
+                            key={i}
+                            remarkPlugins={[remarkGfm]}
+                            components={markdownComponents}
+                        >
                             {item.text}
                         </ReactMarkdown>
                     );
@@ -275,10 +467,56 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
         }
 
         return null;
-    };
+    });
+
+    MessageContent.displayName = "MessageContent";
+
+    const ChatMessage = memo(({ msg, user, selectedModel, theme, t }: { msg: Message, user: any, selectedModel: string, theme: string, t: any }) => {
+        return (
+            <div
+                className={`flex items-start space-x-2 sm:space-x-3 ${msg.role === "user" ? "flex-row-reverse space-x-reverse" : "flex-row"}`}
+            >
+                {/* Avatar */}
+                <div className="flex-shrink-0 mt-1 min-w-[28px] sm:min-w-[32px]">
+                    {msg.role === "user" ? (
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-[10px] sm:text-xs font-bold text-white shadow-sm">
+                            {user?.username?.slice(0, 2).toUpperCase() || "U"}
+                        </div>
+                    ) : (
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[var(--hover-bg)] border border-[var(--glass-border)] flex items-center justify-center text-[10px] sm:text-xs font-bold text-[var(--accent-primary)] shadow-sm">
+                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                    )}
+                </div>
+
+                {/* Message Bubble */}
+                <div className="flex flex-col max-w-[85%] sm:max-w-[80%]">
+                    <div className={`flex items-center mb-1 space-x-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                        <span className="text-[10px] sm:text-xs font-medium text-[var(--text-muted)]">
+                            {msg.role === "user" ? user?.username : (MODELS.find(m => m.id === selectedModel)?.name || selectedModel)}
+                        </span>
+                    </div>
+                    <div
+                        className={`rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm ${msg.role === "user"
+                            ? "bg-[var(--chat-bubble-user)] text-white"
+                            : "bg-[var(--chat-bubble-ai)] border border-[var(--glass-border)] text-[var(--foreground)]"
+                            }`}
+                    >
+                        <div className={`prose prose-sm max-w-none leading-relaxed text-[var(--foreground)] ${msg.role === "user" ? "prose-invert" : "prose-zinc dark:prose-invert"}`}>
+                            <MessageContent content={msg.content} theme={theme} t={t} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    });
+
+    ChatMessage.displayName = "ChatMessage";
 
     return (
-        <div className="flex flex-col h-full w-full max-w-6xl mx-auto relative px-2 sm:px-6">
+        <div className="flex flex-col h-full w-full relative">
             {/* Header - Cleaned up */}
             <div className="absolute top-4 left-0 right-0 z-10 flex justify-center pointer-events-none px-4 no-export">
                 {/* ModelSelector removed from here */}
@@ -287,76 +525,48 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             {/* Messages Area */}
             <div
                 ref={chatContainerRef}
-                className="flex-1 overflow-y-auto p-2 sm:p-4 pt-20 pb-40 sm:pb-48 space-y-4 sm:space-y-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+                className="flex-1 overflow-y-auto pt-20 pb-40 sm:pb-48 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
             >
-                {messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-[var(--text-muted)] space-y-4 px-4 text-center">
-                        <div className="w-16 h-16 rounded-2xl bg-[var(--hover-bg)] flex items-center justify-center">
-                            <svg className="w-8 h-8 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                        </div>
-                        <p className="text-lg font-medium">{t("chat.startChat")}</p>
-                    </div>
-                ) : (
-                    messages.map((msg, idx) => (
-                        <div
-                            key={idx}
-                            className={`flex items-start space-x-2 sm:space-x-3 ${msg.role === "user" ? "flex-row-reverse space-x-reverse" : "flex-row"}`}
-                        >
-                            {/* Avatar */}
-                            <div className="flex-shrink-0 mt-1 min-w-[28px] sm:min-w-[32px]">
-                                {msg.role === "user" ? (
-                                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-[10px] sm:text-xs font-bold text-white shadow-sm">
-                                        {user?.username?.slice(0, 2).toUpperCase() || "U"}
-                                    </div>
-                                ) : (
-                                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[var(--hover-bg)] border border-[var(--glass-border)] flex items-center justify-center text-[10px] sm:text-xs font-bold text-[var(--accent-primary)] shadow-sm">
-                                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                        </svg>
-                                    </div>
-                                )}
+                <div className="max-w-6xl mx-auto px-4 sm:px-10 space-y-4 sm:space-y-6">
+                    {messages.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-[var(--text-muted)] space-y-4 px-4 text-center">
+                            <div className="w-16 h-16 rounded-2xl bg-[var(--hover-bg)] flex items-center justify-center">
+                                <svg className="w-8 h-8 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
                             </div>
-
-                            {/* Message Bubble */}
-                            <div className="flex flex-col max-w-[85%] sm:max-w-[80%]">
-                                <div className={`flex items-center mb-1 space-x-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                                    <span className="text-[10px] sm:text-xs font-medium text-[var(--text-muted)]">
-                                        {msg.role === "user" ? user?.username : (MODELS.find(m => m.id === selectedModel)?.name || selectedModel)}
-                                    </span>
-                                </div>
-                                <div
-                                    className={`rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm ${msg.role === "user"
-                                        ? "bg-[var(--chat-bubble-user)] text-white"
-                                        : "bg-[var(--chat-bubble-ai)] border border-[var(--glass-border)] text-[var(--foreground)]"
-                                        }`}
-                                >
-                                    <div className={`prose prose-sm max-w-none leading-relaxed text-[var(--foreground)] ${msg.role === "user" ? "prose-invert" : "prose-zinc dark:prose-invert"}`}>
-                                        {renderMessageContent(msg.content)}
+                            <p className="text-lg font-medium">{t("chat.startChat")}</p>
+                        </div>
+                    ) : (
+                        messages.map((msg, idx) => (
+                            <ChatMessage
+                                key={idx}
+                                msg={msg}
+                                user={user}
+                                selectedModel={selectedModel}
+                                theme={theme}
+                                t={t}
+                            />
+                        ))
+                    )}
+                    {isLoading && messages[messages.length - 1]?.role === "user" && (
+                        <div className="flex justify-start animate-in fade-in slide-in-from-bottom-2">
+                            <div className="bg-[var(--chat-bubble-ai)] border border-[var(--glass-border)] rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm">
+                                <div className="flex items-center space-x-2 text-[var(--text-muted)]">
+                                    <div className="flex space-x-1">
+                                        <div className="w-1.5 h-1.5 bg-[var(--accent-primary)] rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                        <div className="w-1.5 h-1.5 bg-[var(--accent-primary)] rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                                        <div className="w-1.5 h-1.5 bg-[var(--accent-primary)] rounded-full animate-bounce"></div>
                                     </div>
+                                    <span className="text-sm font-medium italic">{t("chat.thinking") || "Thinking..."}</span>
                                 </div>
                             </div>
                         </div>
-                    ))
-                )}
-                {isLoading && messages[messages.length - 1]?.role === "user" && (
-                    <div className="flex justify-start animate-in fade-in slide-in-from-bottom-2">
-                        <div className="bg-[var(--chat-bubble-ai)] border border-[var(--glass-border)] rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm">
-                            <div className="flex items-center space-x-2 text-[var(--text-muted)]">
-                                <div className="flex space-x-1">
-                                    <div className="w-1.5 h-1.5 bg-[var(--accent-primary)] rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                    <div className="w-1.5 h-1.5 bg-[var(--accent-primary)] rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                                    <div className="w-1.5 h-1.5 bg-[var(--accent-primary)] rounded-full animate-bounce"></div>
-                                </div>
-                                <span className="text-sm font-medium italic">{t("chat.thinking") || "Thinking..."}</span>
-                            </div>
-                        </div>
-                    </div>
-                )}
-                {/* Bottom Spacer to ensure last message is above the input area */}
-                <div className="h-12 sm:h-16" />
-                <div ref={messagesEndRef} />
+                    )}
+                    {/* Bottom Spacer to ensure last message is above the input area */}
+                    <div className="h-12 sm:h-16" />
+                    <div ref={messagesEndRef} />
+                </div>
             </div>
 
             {/* Input Area */}
@@ -367,9 +577,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                         {/* Menu Bar Section */}
                         <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 border-b border-[var(--glass-border)]/30 bg-[var(--foreground)]/[0.03]">
                             <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                                <div className="flex-shrink-0">
-                                    <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} />
-                                </div>
+                                <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} />
 
                                 <div className="h-4 w-[1px] bg-[var(--glass-border)]/50 hidden sm:block" />
 
@@ -400,7 +608,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                                 className="fixed inset-0 z-[100]"
                                                 onClick={() => setShowExportMenu(false)}
                                             />
-                                            <div className="absolute bottom-full left-0 mb-2 w-56 sm:w-64 py-2 rounded-2xl bg-[var(--panel-bg)] border border-[var(--glass-border)] shadow-2xl z-[101] overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                            <div className="absolute bottom-full left-0 mb-2 w-[calc(100vw-2rem)] sm:w-64 max-w-[280px] py-2 rounded-2xl bg-[var(--panel-bg)] border border-[var(--glass-border)] shadow-2xl z-[101] overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
                                                 <div className="px-3 py-2 border-b border-[var(--glass-border)]/30">
                                                     <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t("chat.export")}</p>
                                                 </div>

@@ -50,7 +50,7 @@ export default function ModelSelector({ selectedModel, onModelChange }: ModelSel
                         onClick={() => setIsOpen(false)}
                     />
                     <div
-                        className="absolute bottom-full left-0 mb-2 w-56 sm:w-64 py-2 rounded-2xl bg-[var(--panel-bg)] border border-[var(--glass-border)] shadow-2xl z-[101] overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200"
+                        className="absolute bottom-full left-0 mb-2 w-[calc(100vw-2rem)] sm:w-64 max-w-[280px] py-2 rounded-2xl bg-[var(--panel-bg)] border border-[var(--glass-border)] shadow-2xl z-[101] overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200"
                     >
                         <div className="px-3 py-2 border-b border-[var(--glass-border)]/30">
                             <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Select Model</p>

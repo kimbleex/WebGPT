@@ -22,6 +22,8 @@
   --text-muted: #6b7280;
   --border-color: rgba(255, 255, 255, 0.1);
   --hover-bg: rgba(255, 255, 255, 0.05);
+  --code-bg: #131314;
+  --code-header-bg: #131314;
 }
 
 .light {
@@ -42,6 +44,8 @@
   --text-muted: #334155;
   --border-color: rgba(0, 0, 0, 0.1);
   --hover-bg: rgba(0, 0, 0, 0.04);
+  --code-bg: #f0f4f9;
+  --code-header-bg: #f0f4f9;
 }
 
 body {
@@ -106,6 +110,82 @@ body {
 .light .prose pre code {
   background-color: transparent;
   padding: 0;
+}
+
+/* Hide backticks in inline code added by tailwind typography */
+.prose code::before,
+.prose code::after {
+  content: "" !important;
+}
+
+/* Code block container for Google AI Studio-like UI */
+.code-block-wrapper {
+  position: relative;
+  margin: 1rem 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--code-bg);
+  border: 1px solid var(--glass-border);
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.375rem 1rem 0 1rem;
+  background: var(--code-header-bg);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: lowercase;
+}
+
+.code-block-content {
+  font-size: 0.875rem !important;
+}
+
+/* Override Syntax Highlighter default styles */
+.code-block-content pre {
+  margin: 0 !important;
+  padding: 0 1rem 0.625rem 1rem !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.code-block-content code {
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-family: var(--font-geist-mono), monospace !important;
+}
+
+.copy-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.copy-button:hover {
+  background: var(--hover-bg);
+  color: var(--foreground);
+}
+
+.copy-button.copied {
+  color: #10b981;
+}
+
+.copy-button svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* Glass Utility Class */

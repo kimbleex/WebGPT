@@ -16,6 +16,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "@vercel/postgres": "^0.10.0",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.5.0",
@@ -27,6 +28,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
+    "react-syntax-highlighter": "^16.1.0",
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
