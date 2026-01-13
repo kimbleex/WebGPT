@@ -184,6 +184,7 @@ export default function Home() {
                 accessPassword={""} // Not used anymore, handled by cookie
                 initialMessages={activeSession?.messages}
                 onMessagesChange={handleMessagesChange}
+                user={user}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-gray-500 space-y-4">
