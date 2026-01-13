@@ -48,6 +48,9 @@ const translations = {
             thinking: "Thinking...",
             imageOnly: "Currently only supports image analysis",
             disclaimer: "AI can make mistakes. Consider checking important information.",
+            export: "Chat Export",
+            saveAsImage: "Save as Long Image",
+            exporting: "Exporting...",
         },
         admin: {
             panel: "Admin Panel",
@@ -107,6 +110,9 @@ const translations = {
             thinking: "正在思考...",
             imageOnly: "当前仅支持图片分析",
             disclaimer: "AI 可能会犯错。请考虑核实重要信息。",
+            export: "聊天导出",
+            saveAsImage: "保存为长图",
+            exporting: "正在导出...",
         },
         admin: {
             panel: "管理面板",

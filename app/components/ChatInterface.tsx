@@ -6,6 +6,7 @@ import ModelSelector from "./ModelSelector";
 import { useLanguage } from "@/lib/i18n";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { toPng } from "html-to-image";
 
 export interface Message {
     role: "user" | "assistant";
@@ -25,8 +26,12 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
     const [isLoading, setIsLoading] = useState(false);
     const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
     const [files, setFiles] = useState<File[]>([]);
+    const [isExporting, setIsExporting] = useState(false);
+    const [showExportMenu, setShowExportMenu] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
+    const exportMenuRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -160,6 +165,70 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
         }
     };
 
+    const handleExportImage = async () => {
+        if (!chatContainerRef.current || messages.length === 0) return;
+
+        setIsExporting(true);
+        setShowExportMenu(false);
+
+        try {
+            const node = chatContainerRef.current;
+
+            // Store original styles
+            const originalHeight = node.style.height;
+            const originalOverflow = node.style.overflow;
+
+            // Temporarily set height to auto and overflow to visible to capture full content
+            node.style.height = 'auto';
+            node.style.overflow = 'visible';
+
+            // Wait a bit for layout to settle
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const dataUrl = await toPng(node, {
+                backgroundColor: 'var(--background)',
+                style: {
+                    height: 'auto',
+                    overflow: 'visible',
+                    padding: '40px',
+                    borderRadius: '0'
+                },
+                filter: (node) => {
+                    if (node instanceof HTMLElement) {
+                        if (node.classList.contains('no-export')) return false;
+                        // Filter out the bottom spacer and messagesEndRef if needed
+                        if (node.classList.contains('h-12') || node.classList.contains('sm:h-16')) return false;
+                    }
+                    return true;
+                }
+            });
+
+            // Restore original styles
+            node.style.height = originalHeight;
+            node.style.overflow = originalOverflow;
+
+            const link = document.createElement('a');
+            link.download = `chat-export-${Date.now()}.png`;
+            link.href = dataUrl;
+            link.click();
+        } catch (error) {
+            console.error('Export failed:', error);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    // Close export menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+                setShowExportMenu(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
     const renderMessageContent = (content: any) => {
         if (typeof content === "string") {
             return (
@@ -203,7 +272,10 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-2 sm:p-4 pt-20 pb-44 sm:pb-52 space-y-4 sm:space-y-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+            <div
+                ref={chatContainerRef}
+                className="flex-1 overflow-y-auto p-2 sm:p-4 pt-20 pb-44 sm:pb-52 space-y-4 sm:space-y-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+            >
                 {messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-[var(--text-muted)] space-y-4 px-4 text-center">
                         <div className="w-16 h-16 rounded-2xl bg-[var(--hover-bg)] flex items-center justify-center">
@@ -264,6 +336,58 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                 </div>
 
                                 <div className="h-4 w-[1px] bg-[var(--glass-border)]/50 hidden sm:block" />
+
+                                <div className="relative" ref={exportMenuRef}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowExportMenu(!showExportMenu)}
+                                        className="flex items-center space-x-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-[var(--hover-bg)] border border-[var(--glass-border)] hover:border-[var(--accent-primary)]/30 hover:bg-[var(--hover-bg)]/80 transition-all text-xs sm:text-sm font-medium text-[var(--foreground)] shadow-sm"
+                                        title={t("chat.export")}
+                                    >
+                                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                        <span className="truncate max-w-[100px] sm:max-w-none">{t("chat.export")}</span>
+                                        <svg
+                                            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform ${showExportMenu ? "rotate-0" : "rotate-180"}`}
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
+                                    {showExportMenu && (
+                                        <>
+                                            <div
+                                                className="fixed inset-0 z-[100]"
+                                                onClick={() => setShowExportMenu(false)}
+                                            />
+                                            <div className="absolute bottom-full left-0 mb-2 w-56 sm:w-64 py-2 rounded-2xl bg-[var(--panel-bg)] border border-[var(--glass-border)] shadow-2xl z-[101] overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                                <div className="px-3 py-2 border-b border-[var(--glass-border)]/30">
+                                                    <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">{t("chat.export")}</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleExportImage();
+                                                    }}
+                                                    disabled={isExporting}
+                                                    className={`w-full text-left px-4 py-3 text-sm transition-all flex items-center justify-between group text-[var(--foreground)] hover:bg-[var(--hover-bg)] hover:pl-5 disabled:opacity-50`}
+                                                >
+                                                    <div className="flex items-center space-x-2">
+                                                        <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h14a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                        </svg>
+                                                        <span>{isExporting ? t("chat.exporting") : t("chat.saveAsImage")}</span>
+                                                    </div>
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
 
                                 <div className="sm:hidden">
                                     {files.length > 0 && (
