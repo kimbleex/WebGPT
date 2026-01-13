@@ -70,7 +70,7 @@ export default function Sidebar({
 
             {/* Sidebar Container */}
             <div
-                className={`fixed inset-y-0 left-0 z-40 w-[85vw] sm:w-72 bg-[var(--sidebar-bg)] border-r border-[var(--glass-border)] transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:h-full ${isMobileOpen ? "translate-x-0" : "-translate-x-full"
+                className={`fixed inset-y-0 left-0 z-40 w-[80vw] sm:w-72 bg-[var(--sidebar-bg)] border-r border-[var(--glass-border)] transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:h-full ${isMobileOpen ? "translate-x-0" : "-translate-x-full"
                     }`}
             >
                 <div className="flex flex-col h-full p-3 sm:p-4">

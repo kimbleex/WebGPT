@@ -267,14 +267,14 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
     return (
         <div className="flex flex-col h-full w-full max-w-6xl mx-auto relative px-2 sm:px-6">
             {/* Header - Cleaned up */}
-            <div className="absolute top-4 left-0 right-0 z-10 flex justify-center pointer-events-none px-4">
+            <div className="absolute top-4 left-0 right-0 z-10 flex justify-center pointer-events-none px-4 no-export">
                 {/* ModelSelector removed from here */}
             </div>
 
             {/* Messages Area */}
             <div
                 ref={chatContainerRef}
-                className="flex-1 overflow-y-auto p-2 sm:p-4 pt-20 pb-44 sm:pb-52 space-y-4 sm:space-y-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+                className="flex-1 overflow-y-auto p-2 sm:p-4 pt-20 pb-40 sm:pb-48 space-y-4 sm:space-y-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
             >
                 {messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-[var(--text-muted)] space-y-4 px-4 text-center">
@@ -324,13 +324,13 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             </div>
 
             {/* Input Area */}
-            <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4 lg:p-6 bg-gradient-to-t from-[var(--background)] via-[var(--background)] to-transparent">
+            <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4 lg:p-6 bg-gradient-to-t from-[var(--background)] via-[var(--background)] to-transparent no-export">
                 <div className="max-w-4xl mx-auto">
                     {/* Unified Input Container with Menu Bar */}
                     <div className="bg-[var(--panel-bg)]/80 backdrop-blur-xl border border-[var(--glass-border)] rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl overflow-visible animate-in fade-in slide-in-from-bottom-4">
                         {/* Menu Bar Section */}
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 border-b border-[var(--glass-border)]/30 bg-[var(--foreground)]/[0.03]">
-                            <div className="flex items-center justify-between sm:justify-start gap-3 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 border-b border-[var(--glass-border)]/30 bg-[var(--foreground)]/[0.03]">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-1 min-w-0">
                                 <div className="flex-shrink-0">
                                     <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} />
                                 </div>

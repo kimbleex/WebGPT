@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WebGPT - Secure AI Chat",
-  description: "A secure, private, and beautiful AI chat interface.",
+  title: process.env.WEB_TITLE || "WebGPT - Secure AI Chat",
+  description: process.env.WEB_DESC || "A secure, private, and beautiful AI chat interface.",
 };
 
 export default function RootLayout({
