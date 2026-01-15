@@ -6,7 +6,7 @@
 :root {
   /* Dark Theme (Default) */
   --background: #0f0f12;
-  --foreground: #ededed;
+  --foreground: #f5f5f7;
   --glass-bg: rgba(255, 255, 255, 0.05);
   --glass-border: rgba(255, 255, 255, 0.1);
   --glass-blur: 12px;
@@ -15,11 +15,13 @@
   --accent-secondary: #a855f7;
   --accent-gradient: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   --chat-bubble-user: #4f46e5;
-  --chat-bubble-ai: #1a1a1c;
+  --chat-bubble-ai: #1e1e22;
+  --chat-bubble-ai-text: #e5e5e7;
   --input-bg: #1a1a1c;
   --sidebar-bg: #0a0a0c;
   --panel-bg: #1a1a1c;
-  --text-muted: #6b7280;
+  --text-muted: #9ca3af;
+  --text-muted-light: #d1d5db;
   --border-color: rgba(255, 255, 255, 0.1);
   --hover-bg: rgba(255, 255, 255, 0.05);
   --code-bg: #131314;
@@ -29,7 +31,7 @@
 .light {
   /* Light Theme */
   --background: #ffffff;
-  --foreground: #000000;
+  --foreground: #1a1a1a;
   --glass-bg: rgba(255, 255, 255, 0.8);
   --glass-border: rgba(0, 0, 0, 0.1);
   --glass-blur: 10px;
@@ -37,11 +39,13 @@
   --accent-primary: #4f46e5;
   --accent-secondary: #8b5cf6;
   --chat-bubble-user: #4f46e5;
-  --chat-bubble-ai: #f1f5f9;
+  --chat-bubble-ai: #f8f9fa;
+  --chat-bubble-ai-text: #1f2937;
   --input-bg: #f8fafc;
   --sidebar-bg: #f8fafc;
   --panel-bg: #ffffff;
-  --text-muted: #334155;
+  --text-muted: #475569;
+  --text-muted-light: #64748b;
   --border-color: rgba(0, 0, 0, 0.1);
   --hover-bg: rgba(0, 0, 0, 0.04);
   --code-bg: #f0f4f9;
@@ -80,11 +84,11 @@ body {
   background: var(--text-muted);
 }
 
-/* Markdown Prose Overrides for Light Mode */
-.light .prose {
+/* Markdown Prose Overrides for Dark Mode */
+.prose {
   --tw-prose-body: var(--foreground);
   --tw-prose-headings: var(--foreground);
-  --tw-prose-lead: var(--foreground);
+  --tw-prose-lead: var(--text-muted-light);
   --tw-prose-links: var(--accent-primary);
   --tw-prose-bold: var(--foreground);
   --tw-prose-counters: var(--text-muted);
@@ -94,8 +98,28 @@ body {
   --tw-prose-quote-borders: var(--accent-primary);
   --tw-prose-captions: var(--text-muted);
   --tw-prose-code: var(--foreground);
-  --tw-prose-pre-code: #ffffff;
-  --tw-prose-pre-bg: #1e293b;
+  --tw-prose-pre-code: #f5f5f7;
+  --tw-prose-pre-bg: #1e1e22;
+  --tw-prose-th-borders: var(--border-color);
+  --tw-prose-td-borders: var(--border-color);
+}
+
+/* Markdown Prose Overrides for Light Mode */
+.light .prose {
+  --tw-prose-body: var(--chat-bubble-ai-text);
+  --tw-prose-headings: var(--foreground);
+  --tw-prose-lead: var(--text-muted);
+  --tw-prose-links: var(--accent-primary);
+  --tw-prose-bold: var(--foreground);
+  --tw-prose-counters: var(--text-muted);
+  --tw-prose-bullets: var(--text-muted);
+  --tw-prose-hr: var(--border-color);
+  --tw-prose-quotes: var(--foreground);
+  --tw-prose-quote-borders: var(--accent-primary);
+  --tw-prose-captions: var(--text-muted);
+  --tw-prose-code: var(--foreground);
+  --tw-prose-pre-code: #1f2937;
+  --tw-prose-pre-bg: #f0f4f9;
   --tw-prose-th-borders: var(--border-color);
   --tw-prose-td-borders: var(--border-color);
 }
@@ -195,4 +219,64 @@ body {
   -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
+}
+
+/* Custom animations for model selector submenu */
+@keyframes slideInDown {
+  from {
+    transform: translateY(-10px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutUp {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-10px) scale(0.95);
+    opacity: 0;
+  }
+}
+
+/* Model selector submenu animations */
+.model-submenu-enter {
+  animation: slideInDown 0.2s ease-out forwards;
+}
+
+.model-submenu-exit {
+  animation: slideOutUp 0.15s ease-in forwards;
+}
+
+/* Custom scrollbar styles */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}
+
+/* Smooth hover transitions for submenu items */
+.submenu-item {
+  transition: all 0.2s ease-in-out;
+}
+
+.submenu-item:hover {
+  padding-left: 1.25rem !important;
+  background-color: var(--hover-bg) !important;
 }

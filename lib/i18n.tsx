@@ -51,6 +51,9 @@ const translations = {
             export: "Chat Export",
             saveAsImage: "Save as Long Image",
             exporting: "Exporting...",
+            actions: "Actions",
+            modelSelection: "Model Selection",
+            uploadImage: "Upload Image",
         },
         admin: {
             panel: "Admin Panel",
@@ -113,6 +116,9 @@ const translations = {
             export: "聊天导出",
             saveAsImage: "保存为长图",
             exporting: "正在导出...",
+            actions: "功能菜单",
+            modelSelection: "模型选择",
+            uploadImage: "上传图片",
         },
         admin: {
             panel: "管理面板",

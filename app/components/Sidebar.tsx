@@ -107,7 +107,7 @@ export default function Sidebar({
                                             onSelectSession(session.id);
                                             setIsMobileOpen(false);
                                         }}
-                                        className={`flex-1 text-left px-4 py-3 rounded-xl text-sm transition-all truncate ${activeSessionId === session.id
+                                        className={`flex-1 text-left px-4 pr-10 sm:pr-12 py-3 rounded-xl text-sm transition-all truncate ${activeSessionId === session.id
                                             ? "bg-[var(--hover-bg)] text-[var(--foreground)] font-medium"
                                             : "text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--foreground)]"
                                             }`}
@@ -121,7 +121,7 @@ export default function Sidebar({
                                             e.stopPropagation();
                                             onDeleteSession(session.id);
                                         }}
-                                        className={`absolute right-2 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-400 hover:bg-[var(--hover-bg)] transition-all opacity-0 group-hover:opacity-100 ${activeSessionId === session.id ? "opacity-100" : ""
+                                        className={`absolute right-2 sm:right-3 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-400 hover:bg-[var(--hover-bg)] transition-all opacity-0 group-hover:opacity-100 ${activeSessionId === session.id ? "opacity-100" : ""
                                             }`}
                                         title="Delete chat"
                                     >

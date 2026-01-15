@@ -12,6 +12,7 @@ export const MODELS = [
     { id: "gpt-4", name: "GPT-4" },
     { id: "grok-4.1", name: "Grok-4.1" },
     { id: "claude-opus-4-5-20251101", name: "Claude Opus 4.5" },
+    // { id: "claude-opus-4-5-20251101", name: "Claude Opus 4.5" },
     // { id: "claude-3-sonnet", name: "Claude 3 Sonnet" },
 ];
 
