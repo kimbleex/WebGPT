@@ -904,7 +904,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                     {/* Unified Input Container */}
                     <div className="bg-[var(--panel-bg)]/70 backdrop-blur-2xl border border-[var(--glass-border)] rounded-xl sm:rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-visible animate-in fade-in slide-in-from-bottom-4 duration-500">
                         {/* Input Section */}
-                        <form onSubmit={handleSubmit} className="relative bg-transparent flex items-end p-2 sm:p-3 md:p-4 gap-1 sm:gap-2">
+                        <form onSubmit={handleSubmit} className="relative bg-transparent flex items-center p-2 sm:p-3 md:p-4 gap-1 sm:gap-2">
                             <input
                                 type="file"
                                 ref={fileInputRef}
@@ -995,7 +995,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                 }}
                                 rows={1}
                                 placeholder={t("chat.placeholder")}
-                                className="w-full bg-transparent border-none px-2 sm:px-3 py-2.5 sm:py-3 md:py-4 text-sm sm:text-base text-[var(--foreground)] placeholder-[var(--text-muted)]/70 focus:outline-none focus:ring-0 resize-none max-h-[150px] sm:max-h-[200px] md:max-h-[300px] overflow-y-auto scrollbar-none"
+                                className="w-full bg-transparent border-none px-2 sm:px-3 py-2.5 text-sm sm:text-base text-[var(--foreground)] placeholder-[var(--text-muted)]/70 focus:outline-none focus:ring-0 resize-none max-h-[150px] sm:max-h-[200px] md:max-h-[300px] overflow-y-auto scrollbar-none leading-relaxed"
                                 disabled={isLoading}
                             />
                             <button
@@ -1008,7 +1008,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                         return;
                                     }
                                 }}
-                                className="p-2.5 sm:p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/20 mb-1 ml-1 sm:ml-2 flex-shrink-0"
+                                className="p-2.5 sm:p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/20 ml-1 sm:ml-2 flex-shrink-0 self-center"
                             >
                                 {isLoading ? (
                                     <svg className="animate-spin w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24">
