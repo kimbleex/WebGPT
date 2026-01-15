@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, memo, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, memo, useMemo, useCallback, useTransition } from "react";
 import { MODELS } from "./ModelSelector";
 import ModelSelector from "./ModelSelector";
 import { useLanguage } from "@/lib/i18n";
@@ -34,11 +34,14 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
     const [files, setFiles] = useState<File[]>([]);
     const [isExporting, setIsExporting] = useState(false);
     const [showActionMenu, setShowActionMenu] = useState(false);
+    const [showModelMenu, setShowModelMenu] = useState(false);
     const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
+    const [isPending, startTransition] = useTransition();
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const actionMenuRef = useRef<HTMLDivElement>(null);
+    const modelMenuRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const scrollToBottom = () => {
@@ -49,12 +52,20 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
         scrollToBottom();
     }, [messages]);
 
-    // Auto-expand textarea
+    // Auto-expand textarea with requestAnimationFrame for better performance
     useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = "auto";
-            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-        }
+        if (!textareaRef.current) return;
+        
+        const textarea = textareaRef.current;
+        const updateHeight = () => {
+            if (textarea) {
+                textarea.style.height = "auto";
+                textarea.style.height = `${textarea.scrollHeight}px`;
+            }
+        };
+        
+        const rafId = requestAnimationFrame(updateHeight);
+        return () => cancelAnimationFrame(rafId);
     }, [input]);
 
     // Create and cache image URLs
@@ -205,7 +216,10 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
     };
 
     const handleExportImage = async () => {
-        if (!chatContainerRef.current || messages.length === 0) return;
+        if (!chatContainerRef.current || messages.length === 0) {
+            console.warn('Cannot export: no messages or container not found');
+            return;
+        }
 
         setIsExporting(true);
         setShowActionMenu(false);
@@ -229,41 +243,235 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             node.style.padding = '80px 60px'; // Generous padding for the export
 
             // Wait for layout to settle and images to load
-            await new Promise(resolve => setTimeout(resolve, 400));
+            await new Promise(resolve => setTimeout(resolve, 500));
 
-            const dataUrl = await toPng(node, {
-                backgroundColor: 'var(--background)',
-                width: exportWidth,
-                style: {
-                    height: 'auto',
-                    overflow: 'visible',
-                    margin: '0',
-                    borderRadius: '0',
-                    display: 'flex',
-                    flexDirection: 'column'
-                },
-                filter: (node) => {
-                    if (node instanceof HTMLElement) {
-                        if (node.classList.contains('no-export')) return false;
-                        if (node.classList.contains('h-12') || node.classList.contains('sm:h-16')) return false;
+            // Convert external images to base64 to avoid CORS issues
+            const images = node.querySelectorAll('img');
+            const originalImageStyles = new Map<HTMLImageElement, string>();
+            
+            const imageConversionPromises = Array.from(images).map(async (img: HTMLImageElement) => {
+                // Store original display style
+                originalImageStyles.set(img, img.style.display || '');
+                
+                try {
+                    // Skip if already base64 or data URL
+                    if (img.src.startsWith('data:') || img.src.startsWith('blob:')) {
+                        return;
                     }
-                    return true;
+
+                    // Skip if it's a local image (same origin)
+                    if (img.src.startsWith('/') || img.src.startsWith(window.location.origin)) {
+                        return;
+                    }
+
+                    // For external images, try to convert to base64
+                    let converted = false;
+                    
+                    // Method 1: Try fetch with CORS
+                    try {
+                        const response = await fetch(img.src, {
+                            mode: 'cors',
+                            credentials: 'omit',
+                            cache: 'no-cache'
+                        });
+                        
+                        if (response.ok) {
+                            const blob = await response.blob();
+                            const reader = new FileReader();
+                            const base64Promise = new Promise<string>((resolve, reject) => {
+                                reader.onloadend = () => resolve(reader.result as string);
+                                reader.onerror = reject;
+                                setTimeout(() => reject(new Error('FileReader timeout')), 5000);
+                            });
+                            reader.readAsDataURL(blob);
+                            const base64 = await base64Promise;
+                            img.src = base64;
+                            converted = true;
+                        }
+                    } catch (fetchError) {
+                        // Fetch failed, will try canvas method
+                        console.warn('Fetch failed for image, trying canvas method:', img.src);
+                    }
+
+                    // Method 2: Try canvas method if fetch failed
+                    if (!converted) {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            if (!ctx) throw new Error('Cannot get canvas context');
+
+                            // Create a new image with crossOrigin
+                            const newImg = new Image();
+                            newImg.crossOrigin = 'anonymous';
+                            
+                            await new Promise<void>((resolve, reject) => {
+                                const timeout = setTimeout(() => {
+                                    reject(new Error('Image load timeout'));
+                                }, 3000);
+                                
+                                newImg.onload = () => {
+                                    clearTimeout(timeout);
+                                    try {
+                                        canvas.width = newImg.width;
+                                        canvas.height = newImg.height;
+                                        ctx.drawImage(newImg, 0, 0);
+                                        const base64 = canvas.toDataURL('image/png');
+                                        img.src = base64;
+                                        converted = true;
+                                        resolve();
+                                    } catch (e) {
+                                        console.warn('Canvas draw failed:', e);
+                                        resolve(); // Continue without conversion
+                                    }
+                                };
+                                newImg.onerror = () => {
+                                    clearTimeout(timeout);
+                                    console.warn('Image load failed via canvas:', img.src);
+                                    resolve(); // Continue without conversion
+                                };
+                                newImg.src = img.src;
+                            });
+                        } catch (canvasError) {
+                            console.warn('Canvas method failed:', canvasError);
+                        }
+                    }
+
+                    // If both methods failed, hide the image to avoid CORS errors in export
+                    if (!converted) {
+                        console.warn('Could not convert image to base64, hiding for export:', img.src);
+                        img.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.warn('Image conversion error, hiding image:', error);
+                    img.style.display = 'none';
                 }
             });
+            
+            // Wait for all image conversions with timeout
+            await Promise.race([
+                Promise.all(imageConversionPromises),
+                new Promise(resolve => setTimeout(resolve, 5000)) // Max 5s wait
+            ]);
+            
+            // Wait a bit for images to render after conversion
+            await new Promise(resolve => setTimeout(resolve, 200));
 
-            // Restore original styles
+            // Get computed background color
+            const computedStyle = window.getComputedStyle(document.body);
+            let backgroundColor = computedStyle.getPropertyValue('--background').trim();
+            
+            // Fallback to theme-based color if CSS variable is not available
+            if (!backgroundColor || backgroundColor.startsWith('var(')) {
+                backgroundColor = theme === 'dark' ? '#0f0f12' : '#ffffff';
+            }
+
+            // Validate node before export
+            if (!node || !node.parentElement) {
+                throw new Error('Invalid node for export');
+            }
+
+            let dataUrl: string;
+            try {
+                dataUrl = await toPng(node, {
+                    backgroundColor: backgroundColor,
+                    width: exportWidth,
+                    pixelRatio: 2,
+                    cacheBust: true,
+                    style: {
+                        height: 'auto',
+                        overflow: 'visible',
+                        margin: '0',
+                        borderRadius: '0',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    },
+                    filter: (node) => {
+                        if (node instanceof HTMLElement) {
+                            if (node.classList.contains('no-export')) return false;
+                            // Filter out input area and status bar
+                            if (node.closest('.no-export')) return false;
+                            // Filter out scrollbars
+                            if (node.classList.contains('scrollbar-thin')) return false;
+                        }
+                        return true;
+                    }
+                });
+            } catch (pngError: any) {
+                console.error('toPng error details:', {
+                    message: pngError?.message,
+                    stack: pngError?.stack,
+                    name: pngError?.name,
+                    error: pngError
+                });
+                
+                // Try alternative method with different options
+                try {
+                    dataUrl = await toPng(node, {
+                        backgroundColor: backgroundColor,
+                        pixelRatio: 1,
+                        cacheBust: false,
+                        filter: (node) => {
+                            if (node instanceof HTMLElement) {
+                                if (node.classList.contains('no-export')) return false;
+                                if (node.closest('.no-export')) return false;
+                            }
+                            return true;
+                        }
+                    });
+                } catch (fallbackError: any) {
+                    console.error('Fallback export also failed:', fallbackError);
+                    throw new Error(`Export failed: ${pngError?.message || 'Unknown error'}. Fallback also failed: ${fallbackError?.message || 'Unknown error'}`);
+                }
+            }
+
+            // Restore original styles before creating download link
             node.style.height = originalHeight;
             node.style.overflow = originalOverflow;
             node.style.width = originalWidth;
             node.style.maxWidth = originalMaxWidth;
             node.style.padding = originalPadding;
+            
+            // Restore original image display styles
+            originalImageStyles.forEach((originalDisplay, img) => {
+                img.style.display = originalDisplay;
+            });
+
+            if (!dataUrl) {
+                throw new Error('Failed to generate image data');
+            }
 
             const link = document.createElement('a');
             link.download = `chat-export-${Date.now()}.png`;
             link.href = dataUrl;
+            document.body.appendChild(link);
             link.click();
-        } catch (error) {
-            console.error('Export failed:', error);
+            document.body.removeChild(link);
+        } catch (error: any) {
+            console.error('Export failed with details:', {
+                error,
+                message: error?.message,
+                stack: error?.stack,
+                name: error?.name,
+                stringified: JSON.stringify(error, Object.getOwnPropertyNames(error))
+            });
+            
+            // Restore styles even on error
+            if (chatContainerRef.current) {
+                const node = chatContainerRef.current;
+                node.style.height = '';
+                node.style.overflow = '';
+                node.style.width = '';
+                node.style.maxWidth = '';
+                node.style.padding = '';
+                
+                // Restore image display styles
+                const images = node.querySelectorAll('img');
+                images.forEach((img: HTMLImageElement) => {
+                    img.style.display = '';
+                });
+            }
+            
+            alert(t("chat.exportError") || "Export failed. Please try again.");
         } finally {
             setIsExporting(false);
         }
@@ -274,6 +482,9 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
         const handleClickOutside = (event: MouseEvent) => {
             if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
                 setShowActionMenu(false);
+            }
+            if (modelMenuRef.current && !modelMenuRef.current.contains(event.target as Node)) {
+                setShowModelMenu(false);
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
@@ -561,7 +772,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             {/* Messages Area */}
             <div
                 ref={chatContainerRef}
-                className="flex-1 overflow-y-auto pt-16 sm:pt-20 pb-32 sm:pb-40 md:pb-48 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+                className="flex-1 overflow-y-auto pt-16 sm:pt-20 pb-32 sm:pb-40 md:pb-44 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
             >
                 <div className="max-w-6xl mx-auto px-3 sm:px-6 md:px-10 space-y-3 sm:space-y-4 md:space-y-6">
                     {messages.length === 0 ? (
@@ -600,7 +811,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                         </div>
                     )}
                     {/* Bottom Spacer to ensure last message is above the input area */}
-                    <div className="h-10 sm:h-12 md:h-16" />
+                    <div className="h-8 sm:h-12 md:h-16" />
                     <div ref={messagesEndRef} />
                 </div>
             </div>
@@ -610,17 +821,61 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                 <div className="max-w-5xl mx-auto space-y-3">
                     {/* Status Bar - Shows selected model and uploaded images */}
                     <div className="bg-[var(--panel-bg)]/60 backdrop-blur-xl border border-[var(--glass-border)]/60 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        {/* Selected Model */}
-                        <div className="flex items-center space-x-2 sm:space-x-2.5 min-w-0 flex-1 w-full sm:w-auto">
-                            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                            <span className="text-[10px] sm:text-xs md:text-sm text-[var(--text-muted)] truncate">
-                                {t("chat.modelSelection")}:
-                            </span>
-                            <span className="text-[10px] sm:text-xs md:text-sm font-medium text-[var(--foreground)] truncate opacity-90">
-                                {MODELS.find(m => m.id === selectedModel)?.name || MODELS[0]?.name || selectedModel}
-                            </span>
+                        {/* Model Selection - Clickable */}
+                        <div className="relative min-w-0 flex-1 w-full sm:w-auto" ref={modelMenuRef}>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowModelMenu(!showModelMenu);
+                                    setShowActionMenu(false);
+                                }}
+                                className="flex items-center space-x-2 sm:space-x-2.5 min-w-0 w-full sm:w-auto hover:opacity-80 transition-opacity"
+                            >
+                                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                <span className="text-[10px] sm:text-xs md:text-sm text-[var(--text-muted)] truncate">
+                                    {t("chat.modelSelection")}:
+                                </span>
+                                <span className="text-[10px] sm:text-xs md:text-sm font-medium text-[var(--foreground)] truncate opacity-90">
+                                    {MODELS.find(m => m.id === selectedModel)?.name || MODELS[0]?.name || selectedModel}
+                                </span>
+                                <svg className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-[var(--text-muted)] flex-shrink-0 transition-transform duration-200 ${showModelMenu ? 'rotate-180' : 'rotate-0'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+
+                            {/* Model Selection Dropdown */}
+                            {showModelMenu && (
+                                <div className="absolute bottom-full left-0 mb-2 w-[calc(100vw-2rem)] sm:w-64 max-w-[280px] py-2 rounded-xl sm:rounded-2xl bg-[var(--panel-bg)] border border-[var(--glass-border)] shadow-2xl z-[101] overflow-visible animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                    <div className="px-3 sm:px-4 py-2 border-b border-[var(--glass-border)]/10">
+                                        <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{t("chat.modelSelection")}</p>
+                                    </div>
+                                    <div className="max-h-[8rem] sm:max-h-[10rem] overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--glass-border)]/60 scrollbar-track-transparent">
+                                        {MODELS.map((model) => (
+                                            <button
+                                                key={model.id}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedModel(model.id);
+                                                    setShowModelMenu(false);
+                                                }}
+                                                className={`w-full text-left px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm flex items-center justify-between transition-all duration-150 first:rounded-t-xl last:rounded-b-xl ${selectedModel === model.id
+                                                    ? "bg-[var(--accent-primary)]/20 text-[var(--accent-primary)] font-semibold"
+                                                    : "text-[var(--foreground)] hover:bg-[var(--hover-bg)]/70"
+                                                    }`}
+                                            >
+                                                <span className="truncate">{model.name}</span>
+                                                {selectedModel === model.id && (
+                                                    <svg className="w-4 h-4 flex-shrink-0 ml-2 text-[var(--accent-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Uploaded Images Preview */}
@@ -712,58 +967,6 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                             <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{t("chat.actions")}</p>
                                         </div>
 
-                                        {/* Model Selection - Expandable Menu */}
-                                        <div className="relative">
-                                            <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setActiveSubmenu(activeSubmenu === "model" ? null : "model");
-                                                }}
-                                                className={`w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm transition-all flex items-center justify-between group text-[var(--foreground)] hover:bg-[var(--hover-bg)] ${activeSubmenu === "model" ? "bg-[var(--hover-bg)]" : ""}`}
-                                            >
-                                                <div className="flex items-center space-x-3">
-                                                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                                    </svg>
-                                                    <span>{t("chat.modelSelection")}</span>
-                                                </div>
-                                                <svg className={`w-4 h-4 text-[var(--text-muted)] transition-transform duration-200 ${activeSubmenu === "model" ? "rotate-90" : "rotate-0"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                </svg>
-                                            </button>
-
-                                            {/* Submenu - Expands inline below */}
-                                            {activeSubmenu === "model" && (
-                                            <div className="px-2 sm:px-3 pb-1.5 sm:pb-2 pt-1 sm:pt-1.5 overflow-hidden model-submenu-enter">
-                                                <div className="max-h-[7rem] sm:max-h-[8.25rem] overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--glass-border)]/60 scrollbar-track-transparent hover:scrollbar-thumb-[var(--glass-border)] rounded-lg sm:rounded-xl bg-[var(--hover-bg)]/50 border border-[var(--glass-border)]/50 backdrop-blur-sm">
-                                                        {MODELS.map((model) => (
-                                                            <button
-                                                                key={model.id}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setSelectedModel(model.id);
-                                                                    setShowActionMenu(false);
-                                                                    setActiveSubmenu(null);
-                                                                }}
-                                                                className={`w-full text-left px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm flex items-center justify-between transition-all duration-150 first:rounded-t-xl last:rounded-b-xl ${selectedModel === model.id
-                                                                    ? "bg-[var(--accent-primary)]/20 text-[var(--accent-primary)] font-semibold"
-                                                                    : "text-[var(--foreground)] hover:bg-[var(--hover-bg)]/70"
-                                                                    }`}
-                                                            >
-                                                                <span className="truncate">{model.name}</span>
-                                                                {selectedModel === model.id && (
-                                                                    <svg className="w-4 h-4 flex-shrink-0 ml-2 text-[var(--accent-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                                                    </svg>
-                                                                )}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
                                         {/* Upload Image - Single Action */}
                                         <button
                                             type="button"
@@ -803,7 +1006,12 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                             <textarea
                                 ref={textareaRef}
                                 value={input}
-                                onChange={(e) => setInput(e.target.value)}
+                                onChange={(e) => {
+                                    const newValue = e.target.value;
+                                    startTransition(() => {
+                                        setInput(newValue);
+                                    });
+                                }}
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter" && !e.shiftKey) {
                                         e.preventDefault();
