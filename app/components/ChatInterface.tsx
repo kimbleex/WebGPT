@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, memo, useMemo, useCallback, useTransition } from "react";
+import { useState, useRef, useEffect, useMemo, memo, useTransition } from "react";
 import { MODELS } from "./ModelSelector";
 import ModelSelector from "./ModelSelector";
 import { useLanguage } from "@/lib/i18n";
@@ -36,6 +36,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
     const [showActionMenu, setShowActionMenu] = useState(false);
     const [showModelMenu, setShowModelMenu] = useState(false);
     const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
+    const [isComposing, setIsComposing] = useState(false);
     const [isPending, startTransition] = useTransition();
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -108,11 +109,18 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
 
     const handleSubmit = async (e?: React.FormEvent) => {
         e?.preventDefault();
+        
+        // 防止重复提交
         if ((!input.trim() && files.length === 0) || isLoading) return;
-
+        
+        // 立即设置加载状态，防止重复点击
         setIsLoading(true);
+        
+        // 保存当前输入和文件信息
         const currentInput = input;
         const currentFiles = [...files];
+        
+        // 立即清空输入框，防止重复提交
         setInput("");
         setFiles([]);
 
@@ -224,15 +232,25 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
         setIsExporting(true);
         setShowActionMenu(false);
 
+        // Declare variables at function scope so they're accessible in catch block
+        let originalHeight = '';
+        let originalOverflow = '';
+        let originalWidth = '';
+        let originalMaxWidth = '';
+        let originalPadding = '';
+        let images: NodeListOf<HTMLImageElement> | null = null;
+        const originalImageStyles = new Map<HTMLImageElement, string>();
+        const originalImageSrc = new Map<HTMLImageElement, string>();
+
         try {
             const node = chatContainerRef.current;
 
             // Store original styles
-            const originalHeight = node.style.height;
-            const originalOverflow = node.style.overflow;
-            const originalWidth = node.style.width;
-            const originalMaxWidth = node.style.maxWidth;
-            const originalPadding = node.style.padding;
+            originalHeight = node.style.height;
+            originalOverflow = node.style.overflow;
+            originalWidth = node.style.width;
+            originalMaxWidth = node.style.maxWidth;
+            originalPadding = node.style.padding;
 
             // Temporarily set styles for capture
             const exportWidth = 1000;
@@ -242,119 +260,55 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             node.style.maxWidth = `${exportWidth}px`;
             node.style.padding = '80px 60px'; // Generous padding for the export
 
-            // Wait for layout to settle and images to load
+            // Wait for layout to settle
             await new Promise(resolve => setTimeout(resolve, 500));
 
-            // Convert external images to base64 to avoid CORS issues
-            const images = node.querySelectorAll('img');
-            const originalImageStyles = new Map<HTMLImageElement, string>();
+            // Handle images for export - convert external images to base64 using server proxy
+            images = node.querySelectorAll('img');
             
-            const imageConversionPromises = Array.from(images).map(async (img: HTMLImageElement) => {
-                // Store original display style
+            const imageProcessingPromises = Array.from(images).map(async (img: HTMLImageElement) => {
+                // Store original styles and src
                 originalImageStyles.set(img, img.style.display || '');
+                originalImageSrc.set(img, img.src);
                 
+                // Skip if already base64 or data URL (uploaded images)
+                if (img.src.startsWith('data:') || img.src.startsWith('blob:') || 
+                    img.src.startsWith('/') || img.src.startsWith(window.location.origin)) {
+                    return;
+                }
+                
+                // For external images, use server proxy to convert to base64
                 try {
-                    // Skip if already base64 or data URL
-                    if (img.src.startsWith('data:') || img.src.startsWith('blob:')) {
-                        return;
-                    }
-
-                    // Skip if it's a local image (same origin)
-                    if (img.src.startsWith('/') || img.src.startsWith(window.location.origin)) {
-                        return;
-                    }
-
-                    // For external images, try to convert to base64
-                    let converted = false;
+                    const response = await fetch(`/api/image-proxy?url=${encodeURIComponent(img.src)}`);
                     
-                    // Method 1: Try fetch with CORS
-                    try {
-                        const response = await fetch(img.src, {
-                            mode: 'cors',
-                            credentials: 'omit',
-                            cache: 'no-cache'
-                        });
-                        
-                        if (response.ok) {
-                            const blob = await response.blob();
-                            const reader = new FileReader();
-                            const base64Promise = new Promise<string>((resolve, reject) => {
-                                reader.onloadend = () => resolve(reader.result as string);
-                                reader.onerror = reject;
-                                setTimeout(() => reject(new Error('FileReader timeout')), 5000);
-                            });
-                            reader.readAsDataURL(blob);
-                            const base64 = await base64Promise;
-                            img.src = base64;
-                            converted = true;
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.dataUrl) {
+                            img.src = data.dataUrl;
+                            console.log('Successfully converted external image to base64:', img.src.substring(0, 100) + '...');
+                        } else {
+                            console.warn('Image proxy returned no dataUrl:', data);
                         }
-                    } catch (fetchError) {
-                        // Fetch failed, will try canvas method
-                        console.warn('Fetch failed for image, trying canvas method:', img.src);
-                    }
-
-                    // Method 2: Try canvas method if fetch failed
-                    if (!converted) {
-                        try {
-                            const canvas = document.createElement('canvas');
-                            const ctx = canvas.getContext('2d');
-                            if (!ctx) throw new Error('Cannot get canvas context');
-
-                            // Create a new image with crossOrigin
-                            const newImg = new Image();
-                            newImg.crossOrigin = 'anonymous';
-                            
-                            await new Promise<void>((resolve, reject) => {
-                                const timeout = setTimeout(() => {
-                                    reject(new Error('Image load timeout'));
-                                }, 3000);
-                                
-                                newImg.onload = () => {
-                                    clearTimeout(timeout);
-                                    try {
-                                        canvas.width = newImg.width;
-                                        canvas.height = newImg.height;
-                                        ctx.drawImage(newImg, 0, 0);
-                                        const base64 = canvas.toDataURL('image/png');
-                                        img.src = base64;
-                                        converted = true;
-                                        resolve();
-                                    } catch (e) {
-                                        console.warn('Canvas draw failed:', e);
-                                        resolve(); // Continue without conversion
-                                    }
-                                };
-                                newImg.onerror = () => {
-                                    clearTimeout(timeout);
-                                    console.warn('Image load failed via canvas:', img.src);
-                                    resolve(); // Continue without conversion
-                                };
-                                newImg.src = img.src;
-                            });
-                        } catch (canvasError) {
-                            console.warn('Canvas method failed:', canvasError);
-                        }
-                    }
-
-                    // If both methods failed, hide the image to avoid CORS errors in export
-                    if (!converted) {
-                        console.warn('Could not convert image to base64, hiding for export:', img.src);
-                        img.style.display = 'none';
+                    } else {
+                        console.warn('Image proxy failed:', response.status, response.statusText);
                     }
                 } catch (error) {
-                    console.warn('Image conversion error, hiding image:', error);
-                    img.style.display = 'none';
+                    console.warn('Image proxy error:', error);
                 }
             });
             
-            // Wait for all image conversions with timeout
-            await Promise.race([
-                Promise.all(imageConversionPromises),
-                new Promise(resolve => setTimeout(resolve, 5000)) // Max 5s wait
-            ]);
+            // Wait for all image processing with timeout
+            try {
+                await Promise.race([
+                    Promise.all(imageProcessingPromises),
+                    new Promise(resolve => setTimeout(resolve, 10000)) // 10 second timeout
+                ]);
+            } catch (error) {
+                console.warn('Some images failed to process, continuing with export:', error);
+            }
             
-            // Wait a bit for images to render after conversion
-            await new Promise(resolve => setTimeout(resolve, 200));
+            // Wait a bit for images to load after conversion
+            await new Promise(resolve => setTimeout(resolve, 500));
 
             // Get computed background color
             const computedStyle = window.getComputedStyle(document.body);
@@ -424,17 +378,24 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                 }
             }
 
-            // Restore original styles before creating download link
+            // Restore original images
+            Array.from(images).forEach((img: HTMLImageElement) => {
+                const originalSrc = originalImageSrc.get(img);
+                if (originalSrc) {
+                    img.src = originalSrc;
+                }
+                const originalDisplay = originalImageStyles.get(img);
+                if (originalDisplay) {
+                    img.style.display = originalDisplay;
+                }
+            });
+            
+            // Restore original styles
             node.style.height = originalHeight;
             node.style.overflow = originalOverflow;
             node.style.width = originalWidth;
             node.style.maxWidth = originalMaxWidth;
             node.style.padding = originalPadding;
-            
-            // Restore original image display styles
-            originalImageStyles.forEach((originalDisplay, img) => {
-                img.style.display = originalDisplay;
-            });
 
             if (!dataUrl) {
                 throw new Error('Failed to generate image data');
@@ -464,11 +425,19 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                 node.style.maxWidth = '';
                 node.style.padding = '';
                 
-                // Restore image display styles
-                const images = node.querySelectorAll('img');
-                images.forEach((img: HTMLImageElement) => {
-                    img.style.display = '';
-                });
+                // Restore original images
+                if (images) {
+                    Array.from(images).forEach((img: HTMLImageElement) => {
+                        const originalSrc = originalImageSrc.get(img);
+                        if (originalSrc) {
+                            img.src = originalSrc;
+                        }
+                        const originalDisplay = originalImageStyles.get(img);
+                        if (originalDisplay) {
+                            img.style.display = originalDisplay;
+                        }
+                    });
+                }
             }
             
             alert(t("chat.exportError") || "Export failed. Please try again.");
@@ -1008,14 +977,20 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                 value={input}
                                 onChange={(e) => {
                                     const newValue = e.target.value;
-                                    startTransition(() => {
-                                        setInput(newValue);
-                                    });
+                                    setInput(newValue);
                                 }}
+                                onCompositionStart={() => setIsComposing(true)}
+                                onCompositionEnd={() => setIsComposing(false)}
                                 onKeyDown={(e) => {
+                                    // 中文输入法组合输入期间不处理回车键
+                                    if (isComposing) return;
+                                    
                                     if (e.key === "Enter" && !e.shiftKey) {
                                         e.preventDefault();
-                                        handleSubmit();
+                                        // 防止重复提交，检查是否已经在加载中
+                                        if (!isLoading) {
+                                            handleSubmit();
+                                        }
                                     }
                                 }}
                                 rows={1}
@@ -1026,6 +1001,13 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                             <button
                                 type="submit"
                                 disabled={(!input.trim() && files.length === 0) || isLoading}
+                                onClick={(e) => {
+                                    // 防止重复点击
+                                    if (isLoading) {
+                                        e.preventDefault();
+                                        return;
+                                    }
+                                }}
                                 className="p-2.5 sm:p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/20 mb-1 ml-1 sm:ml-2 flex-shrink-0"
                             >
                                 {isLoading ? (
