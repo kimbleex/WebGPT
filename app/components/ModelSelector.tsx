@@ -10,6 +10,8 @@ interface ModelSelectorProps {
 export const MODELS = [
     // { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
     { id: "gpt-4", name: "GPT-4" },
+    { id: "gpt-5.2-chat", name: "GPT-5.2" },
+    { id: "gemini-3-pro-preview-11-2025", name: "Gemini 3 Pro" },
     { id: "grok-4.1", name: "Grok-4.1" },
     { id: "claude-opus-4-5-20251101", name: "Claude Opus 4.5" },
     // { id: "claude-opus-4-5-20251101", name: "Claude Opus 4.5" },
