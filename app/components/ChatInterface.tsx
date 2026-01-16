@@ -29,8 +29,8 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
     const { theme } = useTheme();
     
     // 内存优化配置
-    const MAX_MESSAGES = 50; // 限制消息数量，防止无限增长
-    const MESSAGE_BATCH_SIZE = 20; // 分页加载的批次大小
+    const MAX_MESSAGES = 20; // 限制消息数量，防止无限增长
+    const MESSAGE_BATCH_SIZE = 5; // 分页加载的批次大小
     
     const [messages, setMessages] = useState<Message[]>(initialMessages.slice(-MAX_MESSAGES));
     const [visibleMessages, setVisibleMessages] = useState<Message[]>([]);
@@ -1049,7 +1049,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                     )}
 
                     {/* Status Bar - Shows selected model, memory usage, and uploaded images */}
-                    <div className="bg-[var(--panel-bg)]/60 backdrop-blur-xl border border-[var(--glass-border)]/60 rounded-xl px-2 sm:px-4 py-1.5 sm:py-2.5 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="bg-[var(--panel-bg)]/60 backdrop-blur-xl border border-[var(--glass-border)]/60 rounded-xl px-2 sm:px-4 py-1 sm:py-1.5 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 sm:gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
                         {/* Left Section - Model Selection and Memory Info */}
                         <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
                             {/* Model Selection - Clickable */}
@@ -1155,7 +1155,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                 type="button"
                                 onClick={clearChatHistory}
                                 className="flex items-center space-x-1 px-1.5 sm:px-3 py-1.5 sm:py-1.5 text-[9px] sm:text-[10px] md:text-xs bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-red-500 hover:text-red-600 transition-colors active:scale-95"
-                                title={t("chat.cleanupMemory") || "Clean memory and chat history"}
+                                title={t("chat.cleanupMemory") || "Clear chat history"}
                             >
                                 <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1163,59 +1163,6 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                 <span className="hidden xs:inline">{t("chat.cleanupMemory") || "Clean Memory"}</span>
                             </button>
                         </div>
-
-                        {/* Uploaded Images Preview */}
-                        {files.length > 0 && (
-                            <div className="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0 w-full sm:w-auto justify-start sm:justify-end">
-                                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h14a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                <div className="flex items-center space-x-1 sm:space-x-1.5 overflow-x-auto scrollbar-none">
-                                    {files.slice(0, 3).map((file, displayIdx) => {
-                                        const originalIdx = displayIdx;
-                                        return (
-                                        <div key={originalIdx} className="relative group flex flex-col items-center space-y-0.5 sm:space-y-1 flex-shrink-0">
-                                            <div className="relative">
-                                                {file.type.startsWith("image/") && imageUrlMap.has(originalIdx) ? (
-                                                    <img
-                                                        src={imageUrlMap.get(originalIdx)!}
-                                                        alt={file.name}
-                                                        className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg object-cover border border-[var(--glass-border)]/50"
-                                                    />
-                                                ) : (
-                                                    <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[var(--hover-bg)] border border-[var(--glass-border)]/50 flex items-center justify-center">
-                                                        <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                        </svg>
-                                                    </div>
-                                                )}
-                                                <button
-                                                    onClick={() => removeFile(originalIdx)}
-                                                    className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-[9px] sm:text-[10px] hover:bg-red-600"
-                                                    title="Remove"
-                                                >
-                                                    ×
-                                                </button>
-                                            </div>
-                                            <span className="text-[9px] sm:text-[10px] text-[var(--text-muted)] max-w-[50px] sm:max-w-[60px] truncate" title={file.name}>
-                                                {file.name}
-                                            </span>
-                                        </div>
-                                        );
-                                    })}
-                                    {files.length > 3 && (
-                                        <div className="flex flex-col items-center space-y-0.5 sm:space-y-1 flex-shrink-0">
-                                            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[var(--hover-bg)] border border-[var(--glass-border)]/50 flex items-center justify-center text-[9px] sm:text-[10px] font-medium text-[var(--text-muted)]">
-                                                +{files.length - 3}
-                                            </div>
-                                            <span className="text-[9px] sm:text-[10px] text-[var(--text-muted)]">
-                                                more
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     {/* Unified Input Container */}
@@ -1289,6 +1236,51 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                 )}
                             </div>
 
+                            {/* Image Preview between Action Button and Textarea */}
+                            {files.length > 0 && (
+                                <div className="flex items-center gap-0.5 px-0 py-2 bg-[var(--hover-bg)]/50 rounded-xl max-w-[280px] sm:max-w-[380px] md:max-w-[480px] overflow-visible flex-shrink-0 max-h-[150px] sm:max-h-[200px] md:max-h-[300px]">
+                                    <div className="flex items-center gap-2 overflow-x-auto scrollbar-none h-full">
+                                        {files.slice(0, 4).map((file, displayIdx) => {
+                                            const originalIdx = displayIdx;
+                                            return (
+                                                <div key={originalIdx} className="relative group flex-shrink-0 p-2">
+                                                    <div className="relative">
+                                                        {file.type.startsWith("image/") && imageUrlMap.has(originalIdx) ? (
+                                                            <img
+                                                                src={imageUrlMap.get(originalIdx)!}
+                                                                alt={file.name}
+                                                                className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-cover border border-[var(--glass-border)]"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[var(--panel-bg)] border border-[var(--glass-border)] flex items-center justify-center">
+                                                                <svg className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                </svg>
+                                                            </div>
+                                                        )}
+                                                        <button
+                                                            onClick={() => removeFile(originalIdx)}
+                                                            className="absolute -top-2 -right-2 w-4.5 h-4.5 sm:w-5 sm:h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-100 transition-all text-[10px] sm:text-xs hover:bg-red-600 shadow-md hover:scale-110 z-20"
+                                                            title="Remove"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        {files.length > 4 && (
+                                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[var(--panel-bg)] border border-[var(--glass-border)] flex items-center justify-center text-[9px] sm:text-[10px] font-medium text-[var(--text-muted)] flex-shrink-0">
+                                                +{files.length - 4}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <span className="text-[10px] sm:text-[11px] text-[var(--text-muted)] whitespace-nowrap">
+                                        {files.length}
+                                    </span>
+                                </div>
+                            )}
+
                             <textarea
                                 ref={textareaRef}
                                 value={input}
@@ -1299,12 +1291,10 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                 onCompositionStart={() => setIsComposing(true)}
                                 onCompositionEnd={() => setIsComposing(false)}
                                 onKeyDown={(e) => {
-                                    // 中文输入法组合输入期间不处理回车键
                                     if (isComposing) return;
                                     
                                     if (e.key === "Enter" && !e.shiftKey) {
                                         e.preventDefault();
-                                        // 防止重复提交，检查是否已经在加载中
                                         if (!isLoading) {
                                             handleSubmit();
                                         }
@@ -1315,6 +1305,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                 className="w-full bg-transparent border-none px-2 sm:px-3 py-2.5 text-sm sm:text-base text-[var(--foreground)] placeholder-[var(--text-muted)]/70 focus:outline-none focus:ring-0 resize-none max-h-[150px] sm:max-h-[200px] md:max-h-[300px] overflow-y-auto scrollbar-none leading-relaxed"
                                 disabled={isLoading}
                             />
+                            
                             <button
                                 type="submit"
                                 disabled={(!input.trim() && files.length === 0) || isLoading}
