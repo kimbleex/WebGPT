@@ -2,33 +2,36 @@
 
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/i18n";
+import { useTokenManagement } from "./Modules/hooks/useTokenManagement";
+import TokenGenerator from "./Modules/TokenGenerator";
+import TokenList from "./Modules/TokenList";
 
-interface Token {
-    code: string;
-    duration_hours: number;
-    is_used: number;
-    created_at: number;
-}
-
+/**
+ * AdminPanel Component
+ * 
+ * 功能 (What):
+ * 管理员面板，提供令牌生成和查看功能。
+ * Admin panel, providing token generation and viewing functionality.
+ * 
+ * 生效范围 (Where):
+ * 作为一个浮动按钮存在于页面右下角，点击展开模态框。
+ * Exists as a floating button in the bottom right corner of the page, expands to a modal on click.
+ * 
+ * 使用方法 (How):
+ * <AdminPanel />
+ */
 export default function AdminPanel() {
     const { t } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
     const [duration, setDuration] = useState(24);
-    const [generatedToken, setGeneratedToken] = useState<string | null>(null);
-    const [recentTokens, setRecentTokens] = useState<Token[]>([]);
-    const [loading, setLoading] = useState(false);
 
-    const fetchTokens = async () => {
-        try {
-            const res = await fetch("/api/admin/tokens");
-            const data = await res.json();
-            if (data.tokens) {
-                setRecentTokens(data.tokens);
-            }
-        } catch (e) {
-            console.error("Failed to fetch tokens");
-        }
-    };
+    const {
+        recentTokens,
+        generatedToken,
+        loading,
+        fetchTokens,
+        generateToken
+    } = useTokenManagement();
 
     useEffect(() => {
         if (isOpen) {
@@ -37,22 +40,9 @@ export default function AdminPanel() {
     }, [isOpen]);
 
     const handleGenerate = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch("/api/admin/tokens", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ duration_hours: duration }),
-            });
-            const data = await res.json();
-            if (data.code) {
-                setGeneratedToken(data.code);
-                fetchTokens();
-            }
-        } catch (e) {
+        const success = await generateToken(duration);
+        if (!success) {
             alert("Failed to generate token");
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -83,55 +73,17 @@ export default function AdminPanel() {
                         </div>
 
                         {/* Generator */}
-                        <div className="bg-white/5 rounded-xl p-4 mb-6">
-                            <h3 className="text-sm font-medium text-gray-300 mb-3">{t("admin.generateToken")}</h3>
-                            <div className="flex gap-3">
-                                <div className="flex-1">
-                                    <label className="block text-xs text-gray-500 mb-1">{t("admin.duration")}</label>
-                                    <input
-                                        type="number"
-                                        value={duration}
-                                        onChange={(e) => setDuration(Number(e.target.value))}
-                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
-                                    />
-                                </div>
-                                <div className="flex items-end">
-                                    <button
-                                        onClick={handleGenerate}
-                                        disabled={loading}
-                                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                                    >
-                                        {loading ? t("admin.loading") : t("admin.generate")}
-                                    </button>
-                                </div>
-                            </div>
-                            {generatedToken && (
-                                <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                                    <p className="text-xs text-green-400 mb-1">Token Generated:</p>
-                                    <code className="text-lg font-mono text-white select-all">{generatedToken}</code>
-                                </div>
-                            )}
-                        </div>
+                        <TokenGenerator
+                            duration={duration}
+                            setDuration={setDuration}
+                            handleGenerate={handleGenerate}
+                            loading={loading}
+                            generatedToken={generatedToken}
+                            t={t}
+                        />
 
                         {/* Recent Tokens */}
-                        <div>
-                            <h3 className="text-sm font-medium text-gray-300 mb-3">{t("admin.recentTokens")}</h3>
-                            <div className="max-h-60 overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-white/10">
-                                {recentTokens.map((token) => (
-                                    <div key={token.code} className="bg-white/5 rounded-lg p-3 flex justify-between items-center">
-                                        <div>
-                                            <p className="font-mono text-sm text-white">{token.code}</p>
-                                            <p className="text-xs text-gray-500">
-                                                {token.duration_hours} {t("admin.hours")} • {new Date(token.created_at).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                        <div className={`px-2 py-1 rounded text-xs ${token.is_used ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-400"}`}>
-                                            {token.is_used ? t("admin.used") : "Active"}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                        <TokenList tokens={recentTokens} t={t} />
                     </div>
                 </div>
             )}

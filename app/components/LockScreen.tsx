@@ -6,6 +6,20 @@ interface LockScreenProps {
     onUnlock: (password: string) => void;
 }
 
+/**
+ * LockScreen Component
+ * 
+ * 功能 (What):
+ * 显示锁屏界面，要求用户输入访问密码。
+ * Displays the lock screen, requiring the user to enter an access password.
+ * 
+ * 生效范围 (Where):
+ * 当用户未提供有效的访问密码时，覆盖在整个应用程序之上。
+ * Overlays the entire application when the user has not provided a valid access password.
+ * 
+ * 使用方法 (How):
+ * <LockScreen onUnlock={handleUnlock} />
+ */
 export default function LockScreen({ onUnlock }: LockScreenProps) {
     const [password, setPassword] = useState("");
     const [error, setError] = useState(false);

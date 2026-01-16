@@ -44,7 +44,7 @@ export default function SysPrompt({ sysPrompt, onSysPromptChange }: SysPromptPro
     };
 
     return (
-        <div className="relative" ref={panelRef}>
+        <div className="static sm:relative" ref={panelRef}>
             <button
                 type="button"
                 onClick={handleOpen}
@@ -64,7 +64,7 @@ export default function SysPrompt({ sysPrompt, onSysPromptChange }: SysPromptPro
             </button>
 
             {showPanel && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 mb-3 w-[calc(100vw-2rem)] sm:w-64 sm:max-w-[280px] max-w-xs rounded-xl sm:rounded-2xl bg-[var(--panel-bg)] border border-[var(--glass-border)] shadow-2xl z-[101] overflow-visible animate-in fade-in slide-in-from-bottom-2 duration-200">
+                <div className="absolute bottom-full left-0 mb-3 w-full sm:w-64 sm:max-w-[280px] rounded-xl sm:rounded-2xl bg-[var(--panel-bg)] border border-[var(--glass-border)] shadow-2xl z-[101] overflow-visible animate-in fade-in slide-in-from-bottom-2 duration-200">
                     <div className="px-3 sm:px-4 py-2 border-b border-[var(--glass-border)]/30">
                         <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{t("chat.sysPrompt")}</p>
                     </div>

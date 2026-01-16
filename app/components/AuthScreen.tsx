@@ -1,56 +1,43 @@
 "use client";
 
-import { useState } from "react";
 import { useLanguage } from "@/lib/i18n";
+import { useAuth } from "./Modules/hooks/useAuth";
+import AuthForm from "./Modules/AuthForm";
 
 interface AuthScreenProps {
     onLogin: (user: any) => void;
 }
 
+/**
+ * AuthScreen Component
+ * 
+ * 功能 (What):
+ * 认证屏幕，处理用户登录和注册。
+ * Authentication screen, handles user login and registration.
+ * 
+ * 生效范围 (Where):
+ * 当用户未登录时显示的全屏组件。
+ * Full-screen component displayed when the user is not logged in.
+ * 
+ * 使用方法 (How):
+ * <AuthScreen onLogin={...} />
+ */
 export default function AuthScreen({ onLogin }: AuthScreenProps) {
     const { t, language, setLanguage } = useLanguage();
-    const [mode, setMode] = useState<"login" | "register">("login");
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
-    const [token, setToken] = useState("");
-    const [error, setError] = useState("");
-    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError("");
-        setLoading(true);
-
-        try {
-            const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
-            const body = mode === "login"
-                ? { username, password }
-                : { username, password, token };
-
-            const res = await fetch(endpoint, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || t("auth.error"));
-            }
-
-            if (mode === "register") {
-                window.location.reload();
-            } else {
-                onLogin(data.user);
-            }
-
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const {
+        mode,
+        setMode,
+        username,
+        setUsername,
+        password,
+        setPassword,
+        token,
+        setToken,
+        error,
+        loading,
+        handleSubmit
+    } = useAuth({ onLogin, t });
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--background)] bg-opacity-95 backdrop-blur-sm">
@@ -102,59 +89,19 @@ export default function AuthScreen({ onLogin }: AuthScreenProps) {
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1 uppercase tracking-wider">{t("auth.username")}</label>
-                        <input
-                            type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            className="w-full bg-[var(--background)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-[var(--foreground)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] transition-all"
-                            placeholder={t("auth.usernamePlaceholder")}
-                            required
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1 uppercase tracking-wider">{t("auth.password")}</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-[var(--background)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-[var(--foreground)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] transition-all"
-                            placeholder={t("auth.passwordPlaceholder")}
-                            required
-                        />
-                    </div>
-
-                    {mode === "register" && (
-                        <div>
-                            <label className="block text-xs font-medium text-[var(--text-muted)] mb-1 uppercase tracking-wider">{t("auth.token")}</label>
-                            <input
-                                type="text"
-                                value={token}
-                                onChange={(e) => setToken(e.target.value)}
-                                className="w-full bg-[var(--background)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-[var(--foreground)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] transition-all font-mono"
-                                placeholder={t("auth.tokenPlaceholder")}
-                                required
-                            />
-                        </div>
-                    )}
-
-                    {error && (
-                        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
-                            {error}
-                        </div>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-[var(--accent-primary)] hover:opacity-90 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-                    >
-                        {loading ? t("auth.processing") : (mode === "login" ? t("auth.unlock") : t("auth.createAccount"))}
-                    </button>
-                </form>
+                <AuthForm
+                    mode={mode}
+                    username={username}
+                    setUsername={setUsername}
+                    password={password}
+                    setPassword={setPassword}
+                    token={token}
+                    setToken={setToken}
+                    error={error}
+                    loading={loading}
+                    handleSubmit={handleSubmit}
+                    t={t}
+                />
             </div>
         </div>
     );
