@@ -11,10 +11,11 @@ import { toPng } from "html-to-image";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "@/lib/theme";
+import SysPrompt from "./Modules/SysPrompt";
 
 export interface Message {
-    role: "user" | "assistant";
-    content: any; // Can be string or array for multimodal
+    role: "user" | "assistant" | "system";
+    content: any;
 }
 
 interface ChatInterfaceProps {
@@ -49,6 +50,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
     const [memoryUsage, setMemoryUsage] = useState<{ used: number; limit: number } | null>(null);
     const [cleanupFeedback, setCleanupFeedback] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
     const [exportFeedback, setExportFeedback] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+    const [sysPrompt, setSysPrompt] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -403,24 +405,27 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                     "x-access-password": accessPassword || "",
                 },
                 body: JSON.stringify({
-                    messages: trimmedMessages.map((m, idx) => {
-                        // Only send Base64 for the current message (the last one)
-                        if (idx === trimmedMessages.length - 1) return m;
-
-                        // For previous messages, if content is an array, strip image data
-                        if (Array.isArray(m.content)) {
-                            return {
-                                ...m,
-                                content: m.content.map(item => {
-                                    if (item.type === "image_url") {
-                                        return { type: "text", text: "[Image]" };
-                                    }
-                                    return item;
-                                })
-                            };
+                    messages: (() => {
+                        let apiMessages = trimmedMessages.map((m, idx) => {
+                            if (idx === trimmedMessages.length - 1) return m;
+                            if (Array.isArray(m.content)) {
+                                return {
+                                    ...m,
+                                    content: m.content.map(item => {
+                                        if (item.type === "image_url") {
+                                            return { type: "text", text: "[Image]" };
+                                        }
+                                        return item;
+                                    })
+                                };
+                            }
+                            return m;
+                        });
+                        if (sysPrompt) {
+                            apiMessages = [{ role: "system", content: sysPrompt }, ...apiMessages];
                         }
-                        return m;
-                    }),
+                        return apiMessages;
+                    })(),
                     model: selectedModel,
                 }),
             });
@@ -1109,9 +1114,9 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                     )}
 
                     {/* Status Bar - Shows selected model, memory usage, and uploaded images */}
-                    <div className="bg-[var(--panel-bg)]/60 backdrop-blur-xl border border-[var(--glass-border)]/60 rounded-xl px-2 sm:px-4 py-1 sm:py-1.5 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 sm:gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        {/* Left Section - Model Selection and Memory Info */}
-                        <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
+                    <div className="bg-[var(--panel-bg)]/60 backdrop-blur-xl border border-[var(--glass-border)]/60 rounded-xl px-2 sm:px-4 py-1.5 sm:py-1.5 shadow-lg flex items-center justify-between gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        {/* Left Section - Model Selection */}
+                        <div className="flex items-center min-w-0">
                             {/* Model Selection - Clickable */}
                             <div className="relative" ref={modelMenuRef}>
                                 <button
@@ -1120,7 +1125,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                         setShowModelMenu(!showModelMenu);
                                         setShowActionMenu(false);
                                     }}
-                                    className="flex items-center space-x-1.5 sm:space-x-2.5 hover:opacity-80 transition-opacity px-1.5 sm:px-2 py-1.5 sm:py-1.5 rounded-lg border border-transparent hover:border-[var(--glass-border)]/30 active:scale-95"
+                                    className="flex items-center space-x-1 sm:space-x-2 hover:opacity-80 transition-opacity px-1.5 sm:px-2 py-1 rounded-lg border border-transparent hover:border-[var(--glass-border)]/30 active:scale-95"
                                 >
                                     <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -1128,10 +1133,10 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                     <span className="hidden xs:inline text-[10px] sm:text-xs md:text-sm text-[var(--text-muted)] truncate">
                                         {t("chat.modelSelection")}:
                                     </span>
-                                    <span className="text-[10px] sm:text-xs md:text-sm font-medium text-[var(--foreground)] truncate opacity-90 max-w-[60px] sm:max-w-[100px]">
+                                    <span className="text-[10px] sm:text-xs md:text-sm font-medium text-[var(--foreground)] truncate opacity-90 max-w-[50px] sm:max-w-[100px]">
                                         {MODELS.find(m => m.id === selectedModel)?.name || MODELS[0]?.name || selectedModel}
                                     </span>
-                                    <svg className={`w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-[var(--text-muted)] flex-shrink-0 transition-transform duration-200 ${showModelMenu ? 'rotate-180' : 'rotate-0'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg className={`w-2.5 h-2.5 sm:w-3 sm:h-3 text-[var(--text-muted)] flex-shrink-0 transition-transform duration-200 ${showModelMenu ? 'rotate-180' : 'rotate-0'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
                                 </button>
@@ -1167,14 +1172,18 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                     </div>
                                 )}
                             </div>
+
+                            {/* System Prompt */}
+                            <div className="h-4 w-px border-r border-[var(--glass-border)]/30 flex-shrink-0" />
+                            <SysPrompt sysPrompt={sysPrompt} onSysPromptChange={setSysPrompt} />
                         </div>
 
-                        {/* Right Section - Memory Cleanup and File Uploads */}
-                        <div className="flex items-center space-x-1.5 sm:space-x-3 ml-auto w-full sm:w-auto justify-between sm:justify-end">
-                            {/* Memory Usage Display - Simplified on small screens */}
+                        {/* Right Section - Memory Cleanup */}
+                        <div className="flex items-center gap-1 sm:gap-2 ml-auto">
+                            {/* Memory Usage Display - Hidden on very small screens */}
                             {memoryUsage ? (
                                 <div 
-                                    className="hidden xs:flex items-center space-x-1 text-[8px] sm:text-[10px] md:text-xs text-[var(--text-muted)] border-r border-[var(--glass-border)]/30 pr-1.5 sm:pr-3 cursor-pointer hover:text-[var(--foreground)] transition-colors group"
+                                    className="hidden sm:flex items-center space-x-1 text-[10px] md:text-xs text-[var(--text-muted)] border-r border-[var(--glass-border)]/30 pr-2 sm:pr-3 cursor-pointer hover:text-[var(--foreground)] transition-colors group"
                                     onClick={() => {
                                         const memoryInfo = (performance as any).memory;
                                         if (memoryInfo) {
@@ -1202,7 +1211,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                     </span>
                                 </div>
                             ) : (
-                                <div className="hidden xs:flex items-center space-x-1 text-[8px] sm:text-[10px] md:text-xs text-[var(--text-muted)] border-r border-[var(--glass-border)]/30 pr-1.5 sm:pr-3">
+                                <div className="hidden sm:flex items-center space-x-1 text-[10px] md:text-xs text-[var(--text-muted)] border-r border-[var(--glass-border)]/30 pr-2 sm:pr-3">
                                     <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
@@ -1214,13 +1223,13 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                             <button
                                 type="button"
                                 onClick={clearChatHistory}
-                                className="flex items-center space-x-1 px-1.5 sm:px-3 py-1.5 sm:py-1.5 text-[9px] sm:text-[10px] md:text-xs bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-red-500 hover:text-red-600 transition-colors active:scale-95"
+                                className="flex items-center justify-center p-1.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-red-500 hover:text-red-600 transition-colors active:scale-95"
                                 title={t("chat.cleanupMemory") || "Clear chat history"}
                             >
-                                <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
-                                <span className="hidden xs:inline">{t("chat.cleanupMemory") || "Clean Memory"}</span>
+                                <span className="hidden sm:inline ml-1">{t("chat.cleanupMemory") || "Clean"}</span>
                             </button>
                         </div>
                     </div>

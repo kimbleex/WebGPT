@@ -63,6 +63,11 @@ const translations = {
             files: "files",
             exportNoMessages: "No chat messages to export",
             exportNoContainer: "Export failed: chat container not found",
+            sysPrompt: "System Prompt",
+            sysPromptPlaceholder: "You are a helpful assistant...",
+            sysPromptSave: "Save",
+            sysPromptClear: "Clear",
+            sysPromptActive: "Active",
         },
         admin: {
             panel: "Admin Panel",
@@ -137,6 +142,11 @@ const translations = {
             files: "个文件",
             exportNoMessages: "暂无聊天记录可导出",
             exportNoContainer: "导出失败：未找到聊天容器",
+            sysPrompt: "系统提示词",
+            sysPromptPlaceholder: "你是一个有帮助的助手...",
+            sysPromptSave: "保存",
+            sysPromptClear: "清空",
+            sysPromptActive: "已启用",
         },
         admin: {
             panel: "管理面板",
