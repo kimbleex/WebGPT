@@ -138,30 +138,34 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
     const [imageUrlMap, setImageUrlMap] = useState<Map<number, string>>(new Map());
     
     useEffect(() => {
-        // 清理不再使用的图片URL
-        const currentFileIndices = new Set(files.map((_, idx) => idx));
+        const newImageUrlMap = new Map<number, string>();
+        const currentUrlMap = imageUrlMap;
         
-        // 清理无效的URL
-        imageUrlMap.forEach((url, idx) => {
-            if (!currentFileIndices.has(idx)) {
-                URL.revokeObjectURL(url);
-                imageUrlMap.delete(idx);
-            }
-        });
-        
-        // 为新增文件创建URL
+        // 为当前文件重新创建URL映射
         files.forEach((file, idx) => {
-            if (file.type.startsWith("image/") && !imageUrlMap.has(idx)) {
-                const url = URL.createObjectURL(file);
-                imageUrlMap.set(idx, url);
+            if (file.type.startsWith("image/")) {
+                // 复用已有的URL，或创建新的
+                if (currentUrlMap.has(idx)) {
+                    newImageUrlMap.set(idx, currentUrlMap.get(idx)!);
+                } else {
+                    const url = URL.createObjectURL(file);
+                    newImageUrlMap.set(idx, url);
+                }
             }
         });
         
-        setImageUrlMap(new Map(imageUrlMap));
+        // 释放不再使用的旧URL
+        currentUrlMap.forEach((url, idx) => {
+            if (!newImageUrlMap.has(idx)) {
+                URL.revokeObjectURL(url);
+            }
+        });
+        
+        setImageUrlMap(newImageUrlMap);
         
         return () => {
             // 组件卸载时清理所有URL
-            imageUrlMap.forEach(url => URL.revokeObjectURL(url));
+            newImageUrlMap.forEach(url => URL.revokeObjectURL(url));
         };
     }, [files]);
 
@@ -216,22 +220,42 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
         if (e.target.files) {
             const newFiles = Array.from(e.target.files);
             setFiles((prev) => [...prev, ...newFiles]);
+            // 清空 input value，确保可以重复上传同一文件
+            e.target.value = "";
         }
     };
 
     const removeFile = (index: number) => {
         setFiles((prev) => {
-            const newFiles = prev.filter((_, i) => i !== index);
+            const fileToRemove = prev[index];
             
-            // 清理对应的图片URL
-            if (imageUrlMap.has(index)) {
-                const url = imageUrlMap.get(index);
-                if (url) URL.revokeObjectURL(url);
-                imageUrlMap.delete(index);
-                setImageUrlMap(new Map(imageUrlMap));
+            // 如果是图片，先释放URL并重新索引
+            if (fileToRemove && fileToRemove.type.startsWith("image/")) {
+                setImageUrlMap((prevMap) => {
+                    const reindexedMap = new Map<number, string>();
+                    
+                    // 先释放被删除文件的URL
+                    if (prevMap.has(index)) {
+                        URL.revokeObjectURL(prevMap.get(index)!);
+                    }
+                    
+                    // 重新索引：只处理原数组中在被删除索引之前的文件
+                    prevMap.forEach((url, idx) => {
+                        if (idx < index) {
+                            // 保持原索引
+                            reindexedMap.set(idx, url);
+                        } else if (idx > index) {
+                            // 索引减1
+                            reindexedMap.set(idx - 1, url);
+                        }
+                        // idx === index 的是被删除的，已经释放了
+                    });
+                    
+                    return reindexedMap;
+                });
             }
             
-            return newFiles;
+            return prev.filter((_, i) => i !== index);
         });
     };
 
