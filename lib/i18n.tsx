@@ -61,6 +61,8 @@ const translations = {
             memoryUsage: "Memory Usage",
             file: "file",
             files: "files",
+            exportNoMessages: "No chat messages to export",
+            exportNoContainer: "Export failed: chat container not found",
         },
         admin: {
             panel: "Admin Panel",
@@ -133,6 +135,8 @@ const translations = {
             memoryUsage: "内存使用",
             file: "个文件",
             files: "个文件",
+            exportNoMessages: "暂无聊天记录可导出",
+            exportNoContainer: "导出失败：未找到聊天容器",
         },
         admin: {
             panel: "管理面板",
