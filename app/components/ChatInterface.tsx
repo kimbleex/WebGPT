@@ -27,7 +27,15 @@ interface ChatInterfaceProps {
 export default function ChatInterface({ accessPassword, initialMessages = [], onMessagesChange, user }: ChatInterfaceProps) {
     const { t } = useLanguage();
     const { theme } = useTheme();
-    const [messages, setMessages] = useState<Message[]>(initialMessages);
+    
+    // 内存优化配置
+    const MAX_MESSAGES = 50; // 限制消息数量，防止无限增长
+    const MESSAGE_BATCH_SIZE = 20; // 分页加载的批次大小
+    
+    const [messages, setMessages] = useState<Message[]>(initialMessages.slice(-MAX_MESSAGES));
+    const [visibleMessages, setVisibleMessages] = useState<Message[]>([]);
+    const [currentBatch, setCurrentBatch] = useState(0);
+    const [hasMoreMessages, setHasMoreMessages] = useState(false);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
@@ -38,20 +46,77 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
     const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
     const [isComposing, setIsComposing] = useState(false);
     const [isPending, startTransition] = useTransition();
+    const [memoryUsage, setMemoryUsage] = useState<{ used: number; limit: number } | null>(null);
+    const [cleanupFeedback, setCleanupFeedback] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const actionMenuRef = useRef<HTMLDivElement>(null);
     const modelMenuRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const observerRef = useRef<IntersectionObserver | null>(null);
+    const loadMoreRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
+    // 初始化可见消息
     useEffect(() => {
-        scrollToBottom();
+        const totalMessages = messages.length;
+        const startIndex = Math.max(0, totalMessages - MESSAGE_BATCH_SIZE);
+        const initialVisible = messages.slice(startIndex);
+        setVisibleMessages(initialVisible);
+        setCurrentBatch(1);
+        setHasMoreMessages(totalMessages > MESSAGE_BATCH_SIZE);
+        
+        // 延迟滚动到底部，确保DOM已更新
+        setTimeout(() => scrollToBottom(), 100);
     }, [messages]);
+
+    // 懒加载更多消息
+    useEffect(() => {
+        if (!loadMoreRef.current) return;
+
+        // 清理之前的观察器
+        if (observerRef.current) {
+            observerRef.current.disconnect();
+        }
+
+        observerRef.current = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMoreMessages) {
+                    loadMoreMessages();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        observerRef.current.observe(loadMoreRef.current);
+
+        return () => {
+            if (observerRef.current) {
+                observerRef.current.disconnect();
+            }
+        };
+    }, [hasMoreMessages, messages]);
+
+    const loadMoreMessages = () => {
+        const totalMessages = messages.length;
+        const nextBatch = currentBatch + 1;
+        const startIndex = Math.max(0, totalMessages - (nextBatch * MESSAGE_BATCH_SIZE));
+        const endIndex = totalMessages - (currentBatch * MESSAGE_BATCH_SIZE);
+        
+        if (startIndex <= 0) {
+            setVisibleMessages(messages);
+            setHasMoreMessages(false);
+        } else {
+            const newVisible = messages.slice(startIndex, endIndex);
+            setVisibleMessages(prev => [...newVisible, ...prev]);
+            setCurrentBatch(nextBatch);
+            setHasMoreMessages(startIndex > 0);
+        }
+    };
 
     // Auto-expand textarea with requestAnimationFrame for better performance
     useEffect(() => {
@@ -69,23 +134,83 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
         return () => cancelAnimationFrame(rafId);
     }, [input]);
 
-    // Create and cache image URLs
-    const imageUrlMap = useMemo(() => {
-        const map = new Map<number, string>();
-        files.forEach((file, idx) => {
-            if (file.type.startsWith("image/")) {
-                map.set(idx, URL.createObjectURL(file));
+    // 优化：创建和管理图片URL，防止内存泄漏
+    const [imageUrlMap, setImageUrlMap] = useState<Map<number, string>>(new Map());
+    
+    useEffect(() => {
+        // 清理不再使用的图片URL
+        const currentFileIndices = new Set(files.map((_, idx) => idx));
+        
+        // 清理无效的URL
+        imageUrlMap.forEach((url, idx) => {
+            if (!currentFileIndices.has(idx)) {
+                URL.revokeObjectURL(url);
+                imageUrlMap.delete(idx);
             }
         });
-        return map;
-    }, [files]);
-
-    // Cleanup image URLs to prevent memory leaks
-    useEffect(() => {
+        
+        // 为新增文件创建URL
+        files.forEach((file, idx) => {
+            if (file.type.startsWith("image/") && !imageUrlMap.has(idx)) {
+                const url = URL.createObjectURL(file);
+                imageUrlMap.set(idx, url);
+            }
+        });
+        
+        setImageUrlMap(new Map(imageUrlMap));
+        
         return () => {
+            // 组件卸载时清理所有URL
             imageUrlMap.forEach(url => URL.revokeObjectURL(url));
         };
-    }, [imageUrlMap]);
+    }, [files]);
+
+    // 内存监控功能
+     useEffect(() => {
+         if (typeof window === 'undefined') return;
+         
+         // 检查是否支持内存 API
+         const isMemoryApiSupported = (performance as any).memory !== undefined;
+         
+         if (!isMemoryApiSupported) {
+             console.log('当前浏览器不支持 memory API，内存监控不可用');
+             return;
+         }
+         
+         const monitorMemory = () => {
+             // 检查内存使用情况
+             const memoryInfo = (performance as any).memory;
+             if (memoryInfo) {
+                 const usedMB = Math.round(memoryInfo.usedJSHeapSize / 1048576);
+                 const limitMB = Math.round(memoryInfo.jsHeapSizeLimit / 1048576);
+                 
+                 // 更新内存使用状态
+                 setMemoryUsage({ used: usedMB, limit: limitMB });
+                 
+                 // 如果内存使用超过80%，触发清理
+                 if (usedMB > limitMB * 0.8) {
+                     console.warn(`内存使用过高: ${usedMB}MB/${limitMB}MB，触发清理`);
+                     
+                     // 清理图片缓存
+                     imageUrlMap.forEach(url => URL.revokeObjectURL(url));
+                     setImageUrlMap(new Map());
+                     
+                     // 强制垃圾回收（如果可用）
+                     if ((window as any).gc) {
+                         (window as any).gc();
+                     }
+                 }
+             }
+         };
+         
+         // 立即检查一次内存
+         monitorMemory();
+         
+         // 每2秒检查一次内存（实时更新）
+         const interval = setInterval(monitorMemory, 2000);
+         
+         return () => clearInterval(interval);
+     }, []);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -95,8 +220,80 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
     };
 
     const removeFile = (index: number) => {
-        setFiles((prev) => prev.filter((_, i) => i !== index));
+        setFiles((prev) => {
+            const newFiles = prev.filter((_, i) => i !== index);
+            
+            // 清理对应的图片URL
+            if (imageUrlMap.has(index)) {
+                const url = imageUrlMap.get(index);
+                if (url) URL.revokeObjectURL(url);
+                imageUrlMap.delete(index);
+                setImageUrlMap(new Map(imageUrlMap));
+            }
+            
+            return newFiles;
+        });
     };
+
+    // 清理会话历史，释放内存
+    const clearChatHistory = () => {
+        const beforeMemory = memoryUsage?.used || 0;
+        
+        // 清理所有图片URL
+        const imageCount = imageUrlMap.size;
+        imageUrlMap.forEach(url => URL.revokeObjectURL(url));
+        setImageUrlMap(new Map());
+        
+        // 清理文件
+        const fileCount = files.length;
+        setFiles([]);
+        
+        // 清理消息
+        const messageCount = messages.length;
+        setMessages([]);
+        setVisibleMessages([]);
+        setCurrentBatch(0);
+        setHasMoreMessages(false);
+        
+        // 通知父组件
+        onMessagesChange?.([]);
+        
+        // 显示清理反馈
+        let feedbackMessage = t("chat.cleanupSuccess");
+        
+        // 如果翻译键不存在，使用默认消息
+        if (feedbackMessage === "chat.cleanupSuccess") {
+            feedbackMessage = `清理成功！释放了 ${messageCount} 条消息，${fileCount} 个文件，${imageCount} 张图片`;
+        } else {
+            // 替换占位符
+            feedbackMessage = feedbackMessage
+                .replace(/{messageCount}/g, messageCount.toString())
+                .replace(/{fileCount}/g, fileCount.toString())
+                .replace(/{imageCount}/g, imageCount.toString());
+        }
+        
+        setCleanupFeedback({
+            message: feedbackMessage,
+            type: 'success'
+        });
+        
+        // 3秒后自动隐藏反馈
+        setTimeout(() => {
+            setCleanupFeedback(null);
+        }, 3000);
+        
+        console.log('会话历史已清理，内存已释放');
+    };
+
+    // 自动隐藏反馈消息
+    useEffect(() => {
+        if (cleanupFeedback) {
+            const timer = setTimeout(() => {
+                setCleanupFeedback(null);
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [cleanupFeedback]);
 
     const fileToBase64 = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
@@ -129,6 +326,9 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             textareaRef.current.style.height = "auto";
         }
 
+        // 提升变量到函数作用域，使其在catch块中可用
+        let trimmedMessages: Message[] = [];
+        
         try {
             let userContent: any = currentInput;
 
@@ -151,10 +351,15 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             }
 
             const userMessage: Message = { role: "user", content: userContent };
+            
+            // 优化：限制消息数量，防止内存无限增长
             const newMessages = [...messages, userMessage];
+            trimmedMessages = newMessages.length > MAX_MESSAGES 
+                ? newMessages.slice(-MAX_MESSAGES)
+                : newMessages;
 
-            setMessages(newMessages);
-            onMessagesChange?.(newMessages);
+            setMessages(trimmedMessages);
+            onMessagesChange?.(trimmedMessages);
 
             const res = await fetch("/api/chat", {
                 method: "POST",
@@ -163,9 +368,9 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                     "x-access-password": accessPassword || "",
                 },
                 body: JSON.stringify({
-                    messages: newMessages.map((m, idx) => {
+                    messages: trimmedMessages.map((m, idx) => {
                         // Only send Base64 for the current message (the last one)
-                        if (idx === newMessages.length - 1) return m;
+                        if (idx === trimmedMessages.length - 1) return m;
 
                         // For previous messages, if content is an array, strip image data
                         if (Array.isArray(m.content)) {
@@ -195,8 +400,11 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             const reader = res.body.getReader();
             const decoder = new TextDecoder();
             let assistantMessage = "";
+            let lastUpdateTime = Date.now(); // 添加时间戳变量
 
-            setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+            // 添加助手消息到临时变量，避免频繁更新状态
+            const tempMessages = [...trimmedMessages, { role: "assistant" as const, content: "" }];
+            setMessages(tempMessages);
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -204,20 +412,39 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                 const chunk = decoder.decode(value, { stream: true });
                 assistantMessage += chunk;
 
-                setMessages((prev) => {
-                    const updated = [...prev];
-                    updated[updated.length - 1] = { role: "assistant", content: assistantMessage };
-                    return updated;
-                });
+                // 优化：减少状态更新频率，每100ms更新一次
+                const now = Date.now();
+                if (now - lastUpdateTime > 100) {
+                    setMessages(prev => {
+                        const updated = [...prev];
+                        updated[updated.length - 1] = { role: "assistant", content: assistantMessage };
+                        return updated;
+                    });
+                    lastUpdateTime = now;
+                }
             }
 
-            onMessagesChange?.([...newMessages, { role: "assistant", content: assistantMessage }]);
+            // 最终更新一次完整消息
+            const finalMessages = [...trimmedMessages, { role: "assistant" as const, content: assistantMessage }];
+            const finalTrimmedMessages = finalMessages.length > MAX_MESSAGES 
+                ? finalMessages.slice(-MAX_MESSAGES)
+                : finalMessages;
+            
+            setMessages(finalTrimmedMessages);
+            onMessagesChange?.(finalTrimmedMessages);
 
         } catch (error: any) {
             console.error("Chat error:", error);
             const errorMsg = `Error: ${error.message || "Something went wrong."}`;
-            setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
-            onMessagesChange?.([...messages, { role: "assistant", content: errorMsg }]);
+            
+            // 优化：限制错误消息的数量
+            const errorMessages = [...trimmedMessages, { role: "assistant" as const, content: errorMsg }];
+            const finalErrorMessages = errorMessages.length > MAX_MESSAGES 
+                ? errorMessages.slice(-MAX_MESSAGES)
+                : errorMessages;
+                
+            setMessages(finalErrorMessages);
+            onMessagesChange?.(finalErrorMessages);
         } finally {
             setIsLoading(false);
         }
@@ -712,7 +939,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                         </span>
                     </div>
                     <div
-                        className={`rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm ${msg.role === "user"
+                        className={`rounded-lg sm:rounded-2xl px-2.5 sm:px-4 py-2 sm:py-2.5 shadow-sm ${msg.role === "user"
                             ? "bg-[var(--chat-bubble-user)] text-white"
                             : "bg-[var(--chat-bubble-ai)] border border-[var(--glass-border)]"
                             }`}
@@ -754,16 +981,31 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                             <p className="text-base sm:text-lg font-medium">{t("chat.startChat")}</p>
                         </div>
                     ) : (
-                        messages.map((msg, idx) => (
-                            <ChatMessage
-                                key={idx}
-                                msg={msg}
-                                user={user}
-                                selectedModel={selectedModel}
-                                theme={theme}
-                                t={t}
-                            />
-                        ))
+                        <>
+                            {/* 懒加载更多消息的触发点 */}
+                            {hasMoreMessages && (
+                                <div ref={loadMoreRef} className="flex justify-center py-3 sm:py-4">
+                                    <button 
+                                        onClick={loadMoreMessages}
+                                        className="px-4 py-2 sm:py-2.5 text-xs sm:text-sm bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-lg hover:bg-[var(--hover-bg)] transition-colors active:scale-95 touch-manipulation"
+                                    >
+                                        {t("chat.loadMore") || "Load More Messages"}
+                                    </button>
+                                </div>
+                            )}
+                            
+                            {/* 渲染可见消息 */}
+                            {visibleMessages.map((msg, idx) => (
+                                <ChatMessage
+                                    key={idx}
+                                    msg={msg}
+                                    user={user}
+                                    selectedModel={selectedModel}
+                                    theme={theme}
+                                    t={t}
+                                />
+                            ))}
+                        </>
                     )}
                     {isLoading && messages[messages.length - 1]?.role === "user" && (
                         <div className="flex justify-start animate-in fade-in slide-in-from-bottom-2">
@@ -788,63 +1030,138 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             {/* Input Area */}
             <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-6 lg:p-8 bg-gradient-to-t from-[var(--background)] via-[var(--background)]/90 to-transparent no-export">
                 <div className="max-w-5xl mx-auto space-y-3">
-                    {/* Status Bar - Shows selected model and uploaded images */}
-                    <div className="bg-[var(--panel-bg)]/60 backdrop-blur-xl border border-[var(--glass-border)]/60 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        {/* Model Selection - Clickable */}
-                        <div className="relative min-w-0 flex-1 w-full sm:w-auto" ref={modelMenuRef}>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowModelMenu(!showModelMenu);
-                                    setShowActionMenu(false);
-                                }}
-                                className="flex items-center space-x-2 sm:space-x-2.5 min-w-0 w-full sm:w-auto hover:opacity-80 transition-opacity"
-                            >
-                                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                </svg>
-                                <span className="text-[10px] sm:text-xs md:text-sm text-[var(--text-muted)] truncate">
-                                    {t("chat.modelSelection")}:
-                                </span>
-                                <span className="text-[10px] sm:text-xs md:text-sm font-medium text-[var(--foreground)] truncate opacity-90">
-                                    {MODELS.find(m => m.id === selectedModel)?.name || MODELS[0]?.name || selectedModel}
-                                </span>
-                                <svg className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-[var(--text-muted)] flex-shrink-0 transition-transform duration-200 ${showModelMenu ? 'rotate-180' : 'rotate-0'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    {/* Cleanup Feedback */}
+                    {cleanupFeedback && (
+                        <div className={`flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium animate-in fade-in slide-in-from-bottom-2 duration-300 ${
+                            cleanupFeedback.type === 'success' 
+                                ? 'bg-green-500/20 text-green-600 border border-green-500/30' 
+                                : 'bg-blue-500/20 text-blue-600 border border-blue-500/30'
+                        }`}>
+                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                {cleanupFeedback.type === 'success' ? (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                ) : (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                )}
+                            </svg>
+                            {cleanupFeedback.message}
+                        </div>
+                    )}
+
+                    {/* Status Bar - Shows selected model, memory usage, and uploaded images */}
+                    <div className="bg-[var(--panel-bg)]/60 backdrop-blur-xl border border-[var(--glass-border)]/60 rounded-xl px-2 sm:px-4 py-1.5 sm:py-2.5 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        {/* Left Section - Model Selection and Memory Info */}
+                        <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
+                            {/* Model Selection - Clickable */}
+                            <div className="relative" ref={modelMenuRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowModelMenu(!showModelMenu);
+                                        setShowActionMenu(false);
+                                    }}
+                                    className="flex items-center space-x-1.5 sm:space-x-2.5 hover:opacity-80 transition-opacity px-1.5 sm:px-2 py-1.5 sm:py-1.5 rounded-lg border border-transparent hover:border-[var(--glass-border)]/30 active:scale-95"
+                                >
+                                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                    <span className="hidden xs:inline text-[10px] sm:text-xs md:text-sm text-[var(--text-muted)] truncate">
+                                        {t("chat.modelSelection")}:
+                                    </span>
+                                    <span className="text-[10px] sm:text-xs md:text-sm font-medium text-[var(--foreground)] truncate opacity-90 max-w-[60px] sm:max-w-[100px]">
+                                        {MODELS.find(m => m.id === selectedModel)?.name || MODELS[0]?.name || selectedModel}
+                                    </span>
+                                    <svg className={`w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-[var(--text-muted)] flex-shrink-0 transition-transform duration-200 ${showModelMenu ? 'rotate-180' : 'rotate-0'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
-                            </button>
+                                </button>
 
-                            {/* Model Selection Dropdown */}
-                            {showModelMenu && (
-                                <div className="absolute bottom-full left-0 mb-2 w-[calc(100vw-2rem)] sm:w-64 max-w-[280px] py-2 rounded-xl sm:rounded-2xl bg-[var(--panel-bg)] border border-[var(--glass-border)] shadow-2xl z-[101] overflow-visible animate-in fade-in slide-in-from-bottom-2 duration-200">
-                                    <div className="px-3 sm:px-4 py-2 border-b border-[var(--glass-border)]/10">
-                                        <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{t("chat.modelSelection")}</p>
+                                {/* Model Selection Dropdown */}
+                                {showModelMenu && (
+                                    <div className="absolute bottom-full left-0 mb-3 w-64 max-w-[280px] rounded-xl sm:rounded-2xl bg-[var(--panel-bg)] border border-[var(--glass-border)] shadow-2xl z-[101] overflow-visible animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                        <div className="px-3 sm:px-4 py-2 border-b border-[var(--glass-border)]/30">
+                                            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{t("chat.modelSelection")}</p>
+                                        </div>
+                                        <div className="max-h-[8rem] sm:max-h-[10rem] overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--glass-border)]/60 scrollbar-track-transparent">
+                                            {MODELS.map((model) => (
+                                                <button
+                                                    key={model.id}
+                                                    onClick={() => {
+                                                        setSelectedModel(model.id);
+                                                        setShowModelMenu(false);
+                                                    }}
+                                                    className={`w-full text-left px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm flex items-center justify-between transition-all duration-150 first:rounded-t-xl last:rounded-b-xl ${selectedModel === model.id
+                                                        ? "bg-[var(--accent-primary)]/20 text-[var(--accent-primary)] font-semibold"
+                                                        : "text-[var(--foreground)] hover:bg-[var(--hover-bg)]/70"
+                                                        }`}
+                                                >
+                                                    <span className="truncate">{model.name}</span>
+                                                    {selectedModel === model.id && (
+                                                        <svg className="w-3.5 h-3.5 flex-shrink-0 ml-2 text-[var(--accent-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="max-h-[8rem] sm:max-h-[10rem] overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--glass-border)]/60 scrollbar-track-transparent">
-                                        {MODELS.map((model) => (
-                                            <button
-                                                key={model.id}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedModel(model.id);
-                                                    setShowModelMenu(false);
-                                                }}
-                                                className={`w-full text-left px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm flex items-center justify-between transition-all duration-150 first:rounded-t-xl last:rounded-b-xl ${selectedModel === model.id
-                                                    ? "bg-[var(--accent-primary)]/20 text-[var(--accent-primary)] font-semibold"
-                                                    : "text-[var(--foreground)] hover:bg-[var(--hover-bg)]/70"
-                                                    }`}
-                                            >
-                                                <span className="truncate">{model.name}</span>
-                                                {selectedModel === model.id && (
-                                                    <svg className="w-4 h-4 flex-shrink-0 ml-2 text-[var(--accent-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Right Section - Memory Cleanup and File Uploads */}
+                        <div className="flex items-center space-x-1.5 sm:space-x-3 ml-auto w-full sm:w-auto justify-between sm:justify-end">
+                            {/* Memory Usage Display - Simplified on small screens */}
+                            {memoryUsage ? (
+                                <div 
+                                    className="hidden xs:flex items-center space-x-1 text-[8px] sm:text-[10px] md:text-xs text-[var(--text-muted)] border-r border-[var(--glass-border)]/30 pr-1.5 sm:pr-3 cursor-pointer hover:text-[var(--foreground)] transition-colors group"
+                                    onClick={() => {
+                                        const memoryInfo = (performance as any).memory;
+                                        if (memoryInfo) {
+                                            const usedMB = Math.round(memoryInfo.usedJSHeapSize / 1048576);
+                                            const limitMB = Math.round(memoryInfo.jsHeapSizeLimit / 1048576);
+                                            setMemoryUsage({ used: usedMB, limit: limitMB });
+                                        }
+                                    }}
+                                    title="点击刷新内存状态"
+                                >
+                                    <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-500 group-hover:rotate-180 transition-transform duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    <span className="font-medium transition-all">
+                                        {memoryUsage.used}MB
+                                    </span>
+                                    <span className={`px-1 py-0.5 rounded text-[7px] font-bold transition-colors ${
+                                        memoryUsage.used / memoryUsage.limit > 0.8 
+                                            ? 'bg-red-500/20 text-red-500' 
+                                            : memoryUsage.used / memoryUsage.limit > 0.6 
+                                            ? 'bg-yellow-500/20 text-yellow-500'
+                                            : 'bg-green-500/20 text-green-500'
+                                    }`}>
+                                        {Math.round((memoryUsage.used / memoryUsage.limit) * 100)}%
+                                    </span>
+                                </div>
+                            ) : (
+                                <div className="hidden xs:flex items-center space-x-1 text-[8px] sm:text-[10px] md:text-xs text-[var(--text-muted)] border-r border-[var(--glass-border)]/30 pr-1.5 sm:pr-3">
+                                    <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span>N/A</span>
                                 </div>
                             )}
+
+                            {/* Memory Cleanup Button */}
+                            <button
+                                type="button"
+                                onClick={clearChatHistory}
+                                className="flex items-center space-x-1 px-1.5 sm:px-3 py-1.5 sm:py-1.5 text-[9px] sm:text-[10px] md:text-xs bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg text-red-500 hover:text-red-600 transition-colors active:scale-95"
+                                title={t("chat.cleanupMemory") || "Clean memory and chat history"}
+                            >
+                                <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                <span className="hidden xs:inline">{t("chat.cleanupMemory") || "Clean Memory"}</span>
+                            </button>
                         </div>
 
                         {/* Uploaded Images Preview */}
@@ -922,7 +1239,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                         setShowActionMenu(!showActionMenu);
                                         setActiveSubmenu(null);
                                     }}
-                                    className={`p-2.5 sm:p-3 text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--hover-bg)] rounded-xl transition-all mb-1 flex items-center justify-center ${showActionMenu ? 'bg-[var(--hover-bg)] text-[var(--foreground)]' : ''}`}
+                                    className={`p-2.5 sm:p-3 text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--hover-bg)] rounded-xl transition-all mb-1 flex items-center justify-center active:scale-90 touch-manipulation ${showActionMenu ? 'bg-[var(--hover-bg)] text-[var(--foreground)]' : ''}`}
                                     title={t("chat.actions")}
                                 >
                                     <svg className={`w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-300 ${showActionMenu ? 'rotate-45' : 'rotate-0'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1008,7 +1325,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                                         return;
                                     }
                                 }}
-                                className="p-2.5 sm:p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/20 ml-1 sm:ml-2 flex-shrink-0 self-center"
+                                className="p-2.5 sm:p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/20 ml-1 sm:ml-2 flex-shrink-0 self-center active:scale-90 touch-manipulation"
                             >
                                 {isLoading ? (
                                     <svg className="animate-spin w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24">

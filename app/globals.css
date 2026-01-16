@@ -280,3 +280,25 @@ body {
   padding-left: 1.25rem !important;
   background-color: var(--hover-bg) !important;
 }
+
+/* Extra small breakpoint (480px) */
+@media (min-width: 480px) {
+  .xs\:inline {
+    display: inline !important;
+  }
+  .xs\:hidden {
+    display: none !important;
+  }
+  .xs\:flex {
+    display: flex !important;
+  }
+  .xs\:block {
+    display: block !important;
+  }
+}
+
+/* Touch manipulation for better mobile experience */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}

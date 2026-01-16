@@ -55,6 +55,10 @@ const translations = {
             actions: "Actions",
             modelSelection: "Model Selection",
             uploadImage: "Upload Image",
+            loadMore: "Load More Messages",
+            cleanupMemory: "Clean Memory",
+            cleanupSuccess: "Cleanup successful! Released {messageCount} messages, {fileCount} files, {imageCount} images",
+            memoryUsage: "Memory Usage",
         },
         admin: {
             panel: "Admin Panel",
@@ -121,6 +125,10 @@ const translations = {
             actions: "功能菜单",
             modelSelection: "模型选择",
             uploadImage: "上传图片",
+            loadMore: "加载更多消息",
+            cleanupMemory: "清理内存",
+            cleanupSuccess: "清理成功！释放了 {messageCount} 条消息，{fileCount} 个文件，{imageCount} 张图片",
+            memoryUsage: "内存使用",
         },
         admin: {
             panel: "管理面板",
