@@ -51,15 +51,28 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
         }
 
-        const tokens = await db.token.findMany({
-            orderBy: { created_at: "desc" }
-        });
+        const { searchParams } = new URL(req.url);
+        const page = parseInt(searchParams.get("page") || "1");
+        const limit = parseInt(searchParams.get("limit") || "10");
+        const skip = (page - 1) * limit;
+
+        const [tokens, total] = await Promise.all([
+            db.token.findMany({
+                skip,
+                take: limit,
+                orderBy: { created_at: "desc" }
+            }),
+            db.token.count()
+        ]);
 
         return NextResponse.json({
             tokens: tokens.map((t: any) => ({
                 ...t,
                 created_at: Number(t.created_at)
-            }))
+            })),
+            total,
+            page,
+            totalPages: Math.ceil(total / limit)
         });
 
     } catch (error) {

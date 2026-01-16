@@ -5,13 +5,14 @@ import { useLanguage } from "@/lib/i18n";
 import { useTokenManagement } from "./Modules/hooks/useTokenManagement";
 import TokenGenerator from "./Modules/TokenGenerator";
 import TokenList from "./Modules/TokenList";
+import UserList from "./Modules/UserList";
 
 /**
  * AdminPanel Component
  * 
  * 功能 (What):
- * 管理员面板，提供令牌生成和查看功能。
- * Admin panel, providing token generation and viewing functionality.
+ * 管理员面板，提供令牌生成、查看功能以及用户管理功能。
+ * Admin panel, providing token generation, viewing functionality, and user management.
  * 
  * 生效范围 (Where):
  * 作为一个浮动按钮存在于页面右下角，点击展开模态框。
@@ -23,6 +24,7 @@ import TokenList from "./Modules/TokenList";
 export default function AdminPanel() {
     const { t } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<'tokens' | 'users'>('tokens');
     const [duration, setDuration] = useState(24);
 
     const {
@@ -30,14 +32,16 @@ export default function AdminPanel() {
         generatedToken,
         loading,
         fetchTokens,
-        generateToken
+        generateToken,
+        page,
+        totalPages
     } = useTokenManagement();
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && activeTab === 'tokens') {
             fetchTokens();
         }
-    }, [isOpen]);
+    }, [isOpen, activeTab]);
 
     const handleGenerate = async () => {
         const success = await generateToken(duration);
@@ -62,28 +66,53 @@ export default function AdminPanel() {
             {/* Modal */}
             {isOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                    <div className="bg-[#1a1a1c] border border-white/10 rounded-2xl w-full max-w-lg p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+                    <div className={`bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-2xl w-full ${activeTab === 'users' ? 'max-w-4xl' : 'max-w-lg'} p-6 shadow-2xl animate-in fade-in zoom-in duration-200 transition-all`}>
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold text-white">{t("admin.panel")}</h2>
-                            <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-white">
+                            <div className="flex space-x-4">
+                                <button
+                                    onClick={() => setActiveTab('tokens')}
+                                    className={`text-lg font-bold transition-colors ${activeTab === 'tokens' ? 'text-[var(--foreground)] border-b-2 border-indigo-500' : 'text-[var(--text-muted)] hover:text-[var(--foreground)]'}`}
+                                >
+                                    {t("admin.tokens")}
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('users')}
+                                    className={`text-lg font-bold transition-colors ${activeTab === 'users' ? 'text-[var(--foreground)] border-b-2 border-indigo-500' : 'text-[var(--text-muted)] hover:text-[var(--foreground)]'}`}
+                                >
+                                    {t("admin.users")}
+                                </button>
+                            </div>
+                            <button onClick={() => setIsOpen(false)} className="text-[var(--text-muted)] hover:text-[var(--foreground)]">
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
-                        {/* Generator */}
-                        <TokenGenerator
-                            duration={duration}
-                            setDuration={setDuration}
-                            handleGenerate={handleGenerate}
-                            loading={loading}
-                            generatedToken={generatedToken}
-                            t={t}
-                        />
+                        {activeTab === 'tokens' ? (
+                            <>
+                                {/* Generator */}
+                                <TokenGenerator
+                                    duration={duration}
+                                    setDuration={setDuration}
+                                    handleGenerate={handleGenerate}
+                                    loading={loading}
+                                    generatedToken={generatedToken}
+                                    t={t}
+                                />
 
-                        {/* Recent Tokens */}
-                        <TokenList tokens={recentTokens} t={t} />
+                                {/* Recent Tokens */}
+                                <TokenList
+                                    tokens={recentTokens}
+                                    t={t}
+                                    page={page}
+                                    totalPages={totalPages}
+                                    onPageChange={(newPage) => fetchTokens(newPage)}
+                                />
+                            </>
+                        ) : (
+                            <UserList isActive={activeTab === 'users'} t={t} />
+                        )}
                     </div>
                 </div>
             )}

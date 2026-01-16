@@ -25,13 +25,19 @@ export function useTokenManagement() {
     const [recentTokens, setRecentTokens] = useState<Token[]>([]);
     const [generatedToken, setGeneratedToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [page, setPage] = useState(1);
+    const [total, setTotal] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
 
-    const fetchTokens = async () => {
+    const fetchTokens = async (pageNum: number = 1, limit: number = 3) => {
         try {
-            const res = await fetch("/api/admin/tokens");
+            const res = await fetch(`/api/admin/tokens?page=${pageNum}&limit=${limit}`);
             const data = await res.json();
             if (data.tokens) {
                 setRecentTokens(data.tokens);
+                setTotal(data.total);
+                setTotalPages(data.totalPages);
+                setPage(data.page);
             }
         } catch (e) {
             console.error("Failed to fetch tokens");
@@ -49,7 +55,7 @@ export function useTokenManagement() {
             const data = await res.json();
             if (data.code) {
                 setGeneratedToken(data.code);
-                fetchTokens();
+                fetchTokens(page); // Refresh current page
                 return true;
             }
             return false;
@@ -67,6 +73,10 @@ export function useTokenManagement() {
         setGeneratedToken,
         loading,
         fetchTokens,
-        generateToken
+        generateToken,
+        page,
+        setPage,
+        totalPages,
+        total
     };
 }

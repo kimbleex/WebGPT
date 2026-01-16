@@ -82,6 +82,24 @@ const translations = {
             loading: "Loading...",
             yes: "Yes",
             no: "No",
+            users: "Users",
+            tokens: "Tokens",
+            table: {
+                id: "ID",
+                username: "Username",
+                role: "Role",
+                createdAt: "Created At",
+                expiresAt: "Expires At",
+                noUsers: "No users found",
+                loading: "Loading...",
+            },
+            pagination: {
+                previous: "Previous",
+                next: "Next",
+                page: "Page",
+                of: "of",
+                pages: "pages",
+            }
         },
     },
     cn: {
@@ -161,6 +179,24 @@ const translations = {
             loading: "加载中...",
             yes: "是",
             no: "否",
+            users: "用户管理",
+            tokens: "Token管理",
+            table: {
+                id: "ID",
+                username: "用户名",
+                role: "角色",
+                createdAt: "创建时间",
+                expiresAt: "过期时间",
+                noUsers: "未找到用户",
+                loading: "加载中...",
+            },
+            pagination: {
+                previous: "上一页",
+                next: "下一页",
+                page: "第",
+                of: "页，共",
+                pages: "页",
+            }
         },
     },
 };
