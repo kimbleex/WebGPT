@@ -6,7 +6,7 @@ import CodeBlock from "./CodeBlock";
 interface MessageContentProps {
     content: any;
     theme: string;
-    t: any;
+    t: (key: string) => string;
 }
 
 const MessageContent = memo(({ content, theme, t }: MessageContentProps) => {

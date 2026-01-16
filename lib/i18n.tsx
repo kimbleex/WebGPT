@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-type Language = "en" | "cn";
+export type Language = "en" | "cn";
 
 const translations = {
     en: {

@@ -8,7 +8,7 @@ interface MessageItemProps {
     user: any;
     selectedModel: string;
     theme: string;
-    t: any;
+    t: (key: string) => string;
 }
 
 const MessageItem = memo(({ msg, user, selectedModel, theme, t }: MessageItemProps) => {

@@ -8,7 +8,7 @@ interface CodeBlockProps {
     className?: string;
     children?: React.ReactNode;
     theme?: string;
-    t?: any;
+    t?: (key: string) => string;
     [key: string]: any;
 }
 

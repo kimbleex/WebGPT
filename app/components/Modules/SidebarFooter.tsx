@@ -1,4 +1,5 @@
 import { useTheme } from "@/lib/theme";
+import { Language } from "@/lib/i18n";
 
 interface SidebarFooterProps {
     user: any;
@@ -9,8 +10,8 @@ interface SidebarFooterProps {
     handleRenew: () => void;
     onLogout: () => void;
     t: (key: string) => string;
-    language: string;
-    setLanguage: (lang: string) => void;
+    language: Language;
+    setLanguage: (lang: Language) => void;
 }
 
 /**
