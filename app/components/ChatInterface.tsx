@@ -47,9 +47,8 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
     // 状态 (State)
     // -------------------------------------------------------------------------
     const [messages, setMessages] = useState<Message[]>(initialMessages.slice(-MAX_MESSAGES));
-    const [visibleMessages, setVisibleMessages] = useState<Message[]>([]);
-    const [currentBatch, setCurrentBatch] = useState(0);
-    const [hasMoreMessages, setHasMoreMessages] = useState(false);
+    const [visibleCount, setVisibleCount] = useState(MESSAGE_BATCH_SIZE);
+    const [hasMoreMessages, setHasMoreMessages] = useState(initialMessages.length > MESSAGE_BATCH_SIZE);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
@@ -106,13 +105,10 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
-    // 初始化可见消息 (Initialize visible messages)
+    // Initialize visible count when messages change
     useEffect(() => {
         const totalMessages = messages.length;
-        const startIndex = Math.max(0, totalMessages - MESSAGE_BATCH_SIZE);
-        const initialVisible = messages.slice(startIndex);
-        setVisibleMessages(initialVisible);
-        setCurrentBatch(1);
+        setVisibleCount(Math.min(totalMessages, MESSAGE_BATCH_SIZE));
         setHasMoreMessages(totalMessages > MESSAGE_BATCH_SIZE);
 
         // 延迟滚动到底部，确保DOM已更新
@@ -148,18 +144,14 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
 
     const loadMoreMessages = () => {
         const totalMessages = messages.length;
-        const nextBatch = currentBatch + 1;
-        const startIndex = Math.max(0, totalMessages - (nextBatch * MESSAGE_BATCH_SIZE));
-        const endIndex = totalMessages - (currentBatch * MESSAGE_BATCH_SIZE);
+        const nextCount = visibleCount + MESSAGE_BATCH_SIZE;
 
-        if (startIndex <= 0) {
-            setVisibleMessages(messages);
+        if (nextCount >= totalMessages) {
+            setVisibleCount(totalMessages);
             setHasMoreMessages(false);
         } else {
-            const newVisible = messages.slice(startIndex, endIndex);
-            setVisibleMessages(prev => [...newVisible, ...prev]);
-            setCurrentBatch(nextBatch);
-            setHasMoreMessages(startIndex > 0);
+            setVisibleCount(nextCount);
+            setHasMoreMessages(true);
         }
     };
 
@@ -194,8 +186,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
         // 清理消息
         const messageCount = messages.length;
         setMessages([]);
-        setVisibleMessages([]);
-        setCurrentBatch(0);
+        setVisibleCount(0);
         setHasMoreMessages(false);
 
         // 通知父组件
@@ -415,7 +406,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             >
                 <MessageList
                     messages={messages}
-                    visibleMessages={visibleMessages}
+                    visibleMessages={messages.slice(-visibleCount)}
                     hasMoreMessages={hasMoreMessages}
                     isLoading={isLoading}
                     loadMoreMessages={loadMoreMessages}

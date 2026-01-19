@@ -135,7 +135,29 @@ export const loadSessions = async (): Promise<any[]> => {
         const request = store.getAll();
 
         request.onsuccess = () => {
-            const sessions = request.result.sort((a, b) => b.updatedAt - a.updatedAt);
+            const sessions = request.result.sort((a, b: any) => b.updatedAt - a.updatedAt);
+            resolve(sessions);
+        };
+
+        request.onerror = (event) => {
+            reject((event.target as IDBRequest).error);
+        };
+    });
+};
+
+export const loadSessionMetadata = async (): Promise<any[]> => {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, "readonly");
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.getAll();
+
+        request.onsuccess = () => {
+            const sessions = request.result.map((s: any) => ({
+                id: s.id,
+                title: s.title,
+                updatedAt: s.updatedAt
+            })).sort((a, b) => b.updatedAt - a.updatedAt);
             resolve(sessions);
         };
 

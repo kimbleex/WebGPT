@@ -5,12 +5,12 @@ import AuthScreen from "./components/AuthScreen";
 import ChatInterface, { Message } from "./components/ChatInterface";
 import Sidebar from "./components/Sidebar";
 import AdminPanel from "./components/AdminPanel";
-import { loadSessions, saveSessions } from "@/lib/storage";
+import { loadSessionMetadata, getSession, saveSessions, updateSession } from "@/lib/storage";
 
 interface Session {
   id: string;
   title: string;
-  messages: Message[];
+  messages?: Message[];
   updatedAt: number;
 }
 
@@ -26,6 +26,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeMessages, setActiveMessages] = useState<Message[]>([]);
+  const [isMessagesLoading, setIsMessagesLoading] = useState(false);
 
   // Check auth status on mount
   useEffect(() => {
@@ -43,11 +45,11 @@ export default function Home() {
   useEffect(() => {
     const initStorage = async () => {
       try {
-        // 1. Try to load from IndexedDB
-        let savedSessions = await loadSessions();
+        // 1. Try to load metadata from IndexedDB
+        let savedMetadata = await loadSessionMetadata();
 
         // 2. Migration: If IndexedDB is empty, check localStorage
-        if (savedSessions.length === 0) {
+        if (savedMetadata.length === 0) {
           const localData = localStorage.getItem("webgpt_sessions");
           if (localData) {
             try {
@@ -55,9 +57,11 @@ export default function Home() {
               if (parsed.length > 0) {
                 console.log("Migrating sessions from localStorage to IndexedDB...");
                 await saveSessions(parsed);
-                savedSessions = parsed;
-                // Optional: localStorage.removeItem("webgpt_sessions"); 
-                // We'll keep it for safety for now, or remove it after confirmation
+                savedMetadata = parsed.map((s: any) => ({
+                  id: s.id,
+                  title: s.title,
+                  updatedAt: s.updatedAt
+                }));
               }
             } catch (e) {
               console.error("Failed to parse localStorage sessions", e);
@@ -65,9 +69,9 @@ export default function Home() {
           }
         }
 
-        if (savedSessions.length > 0) {
-          setSessions(savedSessions);
-          setActiveSessionId(savedSessions[0].id);
+        if (savedMetadata.length > 0) {
+          setSessions(savedMetadata);
+          setActiveSessionId(savedMetadata[0].id);
         }
       } catch (e) {
         console.error("Failed to load sessions from IndexedDB", e);
@@ -77,22 +81,48 @@ export default function Home() {
     initStorage();
   }, []);
 
-  // Save sessions to storage
+  // Load active session messages when activeSessionId changes
   useEffect(() => {
-    saveSessions(sessions).catch((e: any) => {
-      console.error("Failed to save sessions to IndexedDB", e);
-    });
-  }, [sessions]);
+    if (!activeSessionId) {
+      setActiveMessages([]);
+      return;
+    }
+
+    const loadActiveMessages = async () => {
+      setIsMessagesLoading(true);
+      try {
+        const session = await getSession(activeSessionId);
+        if (session) {
+          setActiveMessages(session.messages || []);
+        } else {
+          setActiveMessages([]);
+        }
+      } catch (e) {
+        console.error("Failed to load active session messages", e);
+        setActiveMessages([]);
+      } finally {
+        setIsMessagesLoading(false);
+      }
+    };
+
+    loadActiveMessages();
+  }, [activeSessionId]);
+
+  // Save sessions metadata to storage (handled by updateSession now)
+  // We don't need a global useEffect for sessions anymore as we update individually
 
   const handleNewChat = useCallback(() => {
     const newSession: Session = {
       id: Date.now().toString(),
       title: "New Chat",
-      messages: [],
       updatedAt: Date.now(),
     };
     setSessions((prev) => [newSession, ...prev]);
     setActiveSessionId(newSession.id);
+    setActiveMessages([]);
+
+    // Save new session to DB
+    updateSession({ ...newSession, messages: [] });
   }, []);
 
   const handleDeleteSession = useCallback((id: string) => {
@@ -110,39 +140,55 @@ export default function Home() {
   const handleMessagesChange = useCallback((newMessages: Message[]) => {
     if (!activeSessionId) return;
 
-    setSessions((prev) => prev.map((session) => {
-      if (session.id === activeSessionId) {
-        // Auto-generate title from first user message if it's "New Chat"
-        let title = session.title;
-        if (session.title === "New Chat" && newMessages.length > 0) {
-          const firstUserMsg = newMessages.find(m => m.role === "user");
-          if (firstUserMsg) {
-            let contentText = "";
-            if (typeof firstUserMsg.content === "string") {
-              contentText = firstUserMsg.content;
-            } else if (Array.isArray(firstUserMsg.content)) {
-              const textItem = firstUserMsg.content.find((item: any) => item.type === "text");
-              if (textItem) {
-                contentText = textItem.text;
-              } else {
-                contentText = "Image Analysis"; // Fallback for image-only
+    // Update active messages in state
+    setActiveMessages(newMessages);
+
+    // Update session metadata and save to DB
+    setSessions((prev) => {
+      let titleUpdated = false;
+      const updated = prev.map((session) => {
+        if (session.id === activeSessionId) {
+          let title = session.title;
+          if (session.title === "New Chat" && newMessages.length > 0) {
+            const firstUserMsg = newMessages.find(m => m.role === "user");
+            if (firstUserMsg) {
+              let contentText = "";
+              if (typeof firstUserMsg.content === "string") {
+                contentText = firstUserMsg.content;
+              } else if (Array.isArray(firstUserMsg.content)) {
+                const textItem = firstUserMsg.content.find((item: any) => item.type === "text");
+                if (textItem) {
+                  contentText = textItem.text;
+                } else {
+                  contentText = "Image Analysis";
+                }
+              }
+
+              if (contentText) {
+                title = contentText.slice(0, 30) + (contentText.length > 30 ? "..." : "");
+                titleUpdated = true;
               }
             }
-
-            if (contentText) {
-              title = contentText.slice(0, 30) + (contentText.length > 30 ? "..." : "");
-            }
           }
+
+          const updatedSession = {
+            ...session,
+            title,
+            updatedAt: Date.now()
+          };
+
+          // Save full session to DB
+          updateSession({
+            ...updatedSession,
+            messages: newMessages
+          });
+
+          return updatedSession;
         }
-        return {
-          ...session,
-          messages: newMessages,
-          title,
-          updatedAt: Date.now()
-        };
-      }
-      return session;
-    }));
+        return session;
+      });
+      return updated;
+    });
   }, [activeSessionId]);
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
@@ -179,13 +225,19 @@ export default function Home() {
 
           <div className="flex-1 h-full relative flex flex-col min-w-0 bg-[var(--background)]">
             {activeSessionId ? (
-              <ChatInterface
-                key={activeSessionId} // Force re-mount on session switch
-                accessPassword={""} // Not used anymore, handled by cookie
-                initialMessages={activeSession?.messages}
-                onMessagesChange={handleMessagesChange}
-                user={user}
-              />
+              isMessagesLoading ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                </div>
+              ) : (
+                <ChatInterface
+                  key={activeSessionId} // Force re-mount on session switch
+                  accessPassword={""} // Not used anymore, handled by cookie
+                  initialMessages={activeMessages}
+                  onMessagesChange={handleMessagesChange}
+                  user={user}
+                />
+              )
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-gray-500 space-y-4">
                 <p>Select a chat or start a new one.</p>
