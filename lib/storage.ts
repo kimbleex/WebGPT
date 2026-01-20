@@ -2,7 +2,8 @@
 
 const DB_NAME = "WebGPT_DB";
 const STORE_NAME = "sessions";
-const DB_VERSION = 1;
+const SETTINGS_STORE = "settings";
+const DB_VERSION = 2; // Bump version to add new store
 
 const MAX_SESSIONS = 50;
 const MAX_MESSAGES_PER_SESSION = 20;
@@ -16,6 +17,9 @@ export const initDB = (): Promise<IDBDatabase> => {
             const db = (event.target as IDBOpenDBRequest).result;
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 db.createObjectStore(STORE_NAME, { keyPath: "id" });
+            }
+            if (!db.objectStoreNames.contains(SETTINGS_STORE)) {
+                db.createObjectStore(SETTINGS_STORE);
             }
         };
 
@@ -194,7 +198,10 @@ export const clearAllSessions = async (): Promise<void> => {
         const store = transaction.objectStore(STORE_NAME);
         const request = store.clear();
 
-        request.onsuccess = () => resolve();
+        request.onsuccess = () => {
+            localStorage.removeItem("webgpt_sessions");
+            resolve();
+        };
         request.onerror = (event) => reject((event.target as IDBRequest).error);
     });
 };
@@ -218,4 +225,47 @@ export const getStorageStats = async (): Promise<{
         messageCount,
         estimatedSize
     };
+};
+
+export const getSetting = async (key: string): Promise<any> => {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(SETTINGS_STORE, "readonly");
+        const store = transaction.objectStore(SETTINGS_STORE);
+        const request = store.get(key);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const setSetting = async (key: string, value: any): Promise<void> => {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(SETTINGS_STORE, "readwrite");
+        const store = transaction.objectStore(SETTINGS_STORE);
+        const request = store.put(value, key);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const getAllSettings = async (): Promise<Record<string, any>> => {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(SETTINGS_STORE, "readonly");
+        const store = transaction.objectStore(SETTINGS_STORE);
+        const request = store.openCursor();
+        const settings: Record<string, any> = {};
+
+        request.onsuccess = (event) => {
+            const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+            if (cursor) {
+                settings[cursor.key as string] = cursor.value;
+                cursor.continue();
+            } else {
+                resolve(settings);
+            }
+        };
+        request.onerror = () => reject(request.error);
+    });
 };

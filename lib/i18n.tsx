@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { getSetting, setSetting } from "./storage";
 
 export type Language = "en" | "cn";
 
@@ -119,6 +120,15 @@ const translations = {
             estimatedSize: "Estimated Size",
             close: "Close",
             delete: "Delete",
+            tabs: {
+                sessions: "Chat Sessions",
+                settings: "System Settings",
+            },
+            settings: {
+                theme: "Theme Mode",
+                language: "System Language",
+                unknown: "Unknown Setting",
+            }
         },
     },
     cn: {
@@ -235,6 +245,15 @@ const translations = {
             estimatedSize: "预估占用",
             close: "关闭",
             delete: "删除",
+            tabs: {
+                sessions: "聊天会话",
+                settings: "系统设置",
+            },
+            settings: {
+                theme: "主题模式",
+                language: "系统语言",
+                unknown: "未知设置",
+            }
         },
     },
 };
@@ -251,15 +270,18 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     const [language, setLanguage] = useState<Language>("en");
 
     useEffect(() => {
-        const savedLang = localStorage.getItem("webgpt_language") as Language;
-        if (savedLang && (savedLang === "en" || savedLang === "cn")) {
-            setLanguage(savedLang);
-        }
+        const loadLang = async () => {
+            const savedLang = await getSetting("webgpt_language") as Language;
+            if (savedLang && (savedLang === "en" || savedLang === "cn")) {
+                setLanguage(savedLang);
+            }
+        };
+        loadLang();
     }, []);
 
-    const handleSetLanguage = (lang: Language) => {
+    const handleSetLanguage = async (lang: Language) => {
         setLanguage(lang);
-        localStorage.setItem("webgpt_language", lang);
+        await setSetting("webgpt_language", lang);
     };
 
     const t = (path: string) => {

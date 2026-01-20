@@ -43,28 +43,7 @@ export default function Home() {
   useEffect(() => {
     const initStorage = async () => {
       try {
-        // 1. Try to load from IndexedDB
-        let savedSessions = await loadSessions();
-
-        // 2. Migration: If IndexedDB is empty, check localStorage
-        if (savedSessions.length === 0) {
-          const localData = localStorage.getItem("webgpt_sessions");
-          if (localData) {
-            try {
-              const parsed = JSON.parse(localData);
-              if (parsed.length > 0) {
-                console.log("Migrating sessions from localStorage to IndexedDB...");
-                await saveSessions(parsed);
-                savedSessions = parsed;
-                // Optional: localStorage.removeItem("webgpt_sessions"); 
-                // We'll keep it for safety for now, or remove it after confirmation
-              }
-            } catch (e) {
-              console.error("Failed to parse localStorage sessions", e);
-            }
-          }
-        }
-
+        const savedSessions = await loadSessions();
         if (savedSessions.length > 0) {
           setSessions(savedSessions);
           setActiveSessionId(savedSessions[0].id);
