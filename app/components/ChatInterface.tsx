@@ -11,6 +11,7 @@ import { Message } from "./Modules/types";
 import { useChatExport } from "./Modules/hooks/useChatExport";
 import { useMemoryMonitor } from "./Modules/hooks/useMemoryMonitor";
 import { useFileHandler, fileToBase64 } from "./Modules/hooks/useFileHandler";
+import StorageManager from "./Modules/StorageManager";
 
 export type { Message } from "./Modules/types";
 
@@ -59,6 +60,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
     const [isComposing, setIsComposing] = useState(false);
     const [sysPrompt, setSysPrompt] = useState("");
     const [cleanupFeedback, setCleanupFeedback] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+    const [showStorageManager, setShowStorageManager] = useState(false);
 
     // 引用 (Refs)
     // -------------------------------------------------------------------------
@@ -472,6 +474,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                         setSysPrompt={setSysPrompt}
                         memoryUsage={memoryUsage}
                         clearChatHistory={clearChatHistory}
+                        onOpenStorage={() => setShowStorageManager(true)}
                         modelMenuRef={modelMenuRef}
                         t={t}
                     />
@@ -505,6 +508,13 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                     </p>
                 </div>
             </div>
+
+            {/* Storage Manager Modal */}
+            <StorageManager
+                isOpen={showStorageManager}
+                onClose={() => setShowStorageManager(false)}
+                t={t}
+            />
         </div>
     );
 }

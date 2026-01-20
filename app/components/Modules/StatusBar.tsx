@@ -11,6 +11,7 @@ interface StatusBarProps {
     setSysPrompt: (prompt: string) => void;
     memoryUsage: { used: number; limit: number } | null;
     clearChatHistory: () => void;
+    onOpenStorage: () => void;
     modelMenuRef: React.RefObject<HTMLDivElement | null>;
     t: (key: string) => string;
 }
@@ -39,6 +40,7 @@ export default function StatusBar({
     setSysPrompt,
     memoryUsage,
     clearChatHistory,
+    onOpenStorage,
     modelMenuRef,
     t
 }: StatusBarProps) {
@@ -146,6 +148,19 @@ export default function StatusBar({
                         <span>N/A</span>
                     </div>
                 )}
+
+                {/* Storage Management Button */}
+                <button
+                    type="button"
+                    onClick={onOpenStorage}
+                    className="flex items-center justify-center p-1.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg text-blue-500 hover:text-blue-600 transition-colors active:scale-95"
+                    title={t("storage.title") || "Manage Storage"}
+                >
+                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                    </svg>
+                    <span className="hidden sm:inline ml-1">{t("storage.title") || "Storage"}</span>
+                </button>
 
                 {/* Memory Cleanup Button */}
                 <button
