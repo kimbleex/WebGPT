@@ -432,7 +432,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             </div>
 
             {/* Input Area */}
-            <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-6 lg:p-8 bg-gradient-to-t from-[var(--background)] via-[var(--background)]/90 to-transparent no-export">
+            <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-6 lg:p-8 pb-[env(safe-area-inset-bottom)] bg-gradient-to-t from-[var(--background)] via-[var(--background)]/90 to-transparent no-export">
                 <div className="max-w-5xl mx-auto space-y-3">
                     {/* Cleanup Feedback */}
                     {cleanupFeedback && (

@@ -57,12 +57,29 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   min-height: 100vh;
+  /* Support for iOS safe areas */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
   overflow-x: hidden;
+  /* Prevent rubber band effect on the whole page */
+  overscroll-behavior-y: none;
   /* Subtle background gradient mesh effect */
   background-image:
     radial-gradient(circle at 15% 50%, var(--accent-primary) 0.03, transparent 25%),
     radial-gradient(circle at 85% 30%, var(--accent-secondary) 0.03, transparent 25%);
   transition: background-color 0.3s ease, color 0.3s ease;
+  /* Disable callouts and selection for a more app-like feel */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Re-enable selection for chat messages and inputs */
+.prose, input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* Custom Scrollbar */
@@ -301,4 +318,17 @@ body {
 .touch-manipulation {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Global tap highlight removal for buttons and links */
+button, a {
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+/* Hide scrollbar for a cleaner app look on mobile */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    display: none;
+  }
 }

@@ -17,6 +17,15 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: process.env.WEB_TITLE || "WebGPT - Secure AI Chat",
   description: process.env.WEB_DESC || "A secure, private, and beautiful AI chat interface.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "WebGPT",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({
