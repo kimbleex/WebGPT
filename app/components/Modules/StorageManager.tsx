@@ -6,10 +6,11 @@ import { loadSessions, deleteSession, clearAllSessions, getStorageStats } from "
 interface StorageManagerProps {
     isOpen: boolean;
     onClose: () => void;
+    onSessionsChange?: (sessions: any[]) => void;
     t: (key: string) => string;
 }
 
-export default function StorageManager({ isOpen, onClose, t }: StorageManagerProps) {
+export default function StorageManager({ isOpen, onClose, onSessionsChange, t }: StorageManagerProps) {
     const [sessions, setSessions] = useState<any[]>([]);
     const [stats, setStats] = useState<{ sessionCount: number; messageCount: number; estimatedSize: number } | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -24,6 +25,9 @@ export default function StorageManager({ isOpen, onClose, t }: StorageManagerPro
             ]);
             setSessions(loadedSessions);
             setStats(storageStats);
+            if (onSessionsChange) {
+                onSessionsChange(loadedSessions);
+            }
         } catch (error) {
             console.error("Failed to load storage data:", error);
         } finally {

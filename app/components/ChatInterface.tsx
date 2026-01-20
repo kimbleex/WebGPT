@@ -19,6 +19,7 @@ interface ChatInterfaceProps {
     accessPassword: string | null;
     initialMessages?: Message[];
     onMessagesChange?: (messages: Message[]) => void;
+    onSessionsChange?: (sessions: any[]) => void;
     user: any;
 }
 
@@ -36,7 +37,7 @@ interface ChatInterfaceProps {
  * 使用方法 (How):
  * <ChatInterface accessPassword={...} user={...} />
  */
-export default function ChatInterface({ accessPassword, initialMessages = [], onMessagesChange, user }: ChatInterfaceProps) {
+export default function ChatInterface({ accessPassword, initialMessages = [], onMessagesChange, onSessionsChange, user }: ChatInterfaceProps) {
     const { t } = useLanguage();
     const { theme } = useTheme();
 
@@ -513,6 +514,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             <StorageManager
                 isOpen={showStorageManager}
                 onClose={() => setShowStorageManager(false)}
+                onSessionsChange={onSessionsChange}
                 t={t}
             />
         </div>

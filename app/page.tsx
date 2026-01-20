@@ -184,6 +184,7 @@ export default function Home() {
                 accessPassword={""} // Not used anymore, handled by cookie
                 initialMessages={activeSession?.messages}
                 onMessagesChange={handleMessagesChange}
+                onSessionsChange={setSessions}
                 user={user}
               />
             ) : (
