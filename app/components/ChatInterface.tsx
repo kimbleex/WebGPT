@@ -405,34 +405,36 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
     }, []);
 
     return (
-        <div className="flex flex-col h-full w-full relative">
-            {/* Header - Cleaned up */}
-            <div className="absolute top-4 left-0 right-0 z-10 flex justify-center pointer-events-none px-4 no-export">
-                {/* ModelSelector removed from here */}
-            </div>
-
-            {/* Messages Area */}
+        <div className="flex flex-col h-full w-full overflow-hidden">
+            {/* Messages Area - Now using flex-1 to take up all available space */}
             <div
                 ref={chatContainerRef}
-                className="flex-1 overflow-y-auto pt-16 sm:pt-20 pb-32 sm:pb-40 md:pb-44 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+                className="flex-1 overflow-y-auto relative scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
             >
-                <MessageList
-                    messages={messages}
-                    visibleMessages={visibleMessages}
-                    hasMoreMessages={hasMoreMessages}
-                    isLoading={isLoading}
-                    loadMoreMessages={loadMoreMessages}
-                    loadMoreRef={loadMoreRef}
-                    messagesEndRef={messagesEndRef}
-                    user={user}
-                    selectedModel={selectedModel}
-                    theme={theme}
-                    t={t}
-                />
+                {/* Header - Still absolute but scoped to the scrollable area or the main container */}
+                <div className="sticky top-0 left-0 right-0 z-20 flex justify-center pointer-events-none px-4 pt-4 no-export">
+                    {/* ModelSelector removed from here */}
+                </div>
+
+                <div className="pt-4 pb-4">
+                    <MessageList
+                        messages={messages}
+                        visibleMessages={visibleMessages}
+                        hasMoreMessages={hasMoreMessages}
+                        isLoading={isLoading}
+                        loadMoreMessages={loadMoreMessages}
+                        loadMoreRef={loadMoreRef}
+                        messagesEndRef={messagesEndRef}
+                        user={user}
+                        selectedModel={selectedModel}
+                        theme={theme}
+                        t={t}
+                    />
+                </div>
             </div>
 
-            {/* Input Area */}
-            <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-6 lg:p-8 pb-[env(safe-area-inset-bottom)] bg-gradient-to-t from-[var(--background)] via-[var(--background)]/90 to-transparent no-export">
+            {/* Input Area - Now a regular flex child, naturally staying at the bottom */}
+            <div className="flex-shrink-0 p-3 sm:p-6 lg:p-8 pb-[env(safe-area-inset-bottom)] bg-[var(--background)] border-t border-[var(--glass-border)]/10 no-export">
                 <div className="max-w-5xl mx-auto space-y-3">
                     {/* Cleanup Feedback */}
                     {cleanupFeedback && (

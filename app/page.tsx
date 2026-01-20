@@ -137,11 +137,11 @@ export default function Home() {
   }, []);
 
   if (loading) {
-    return <div className="h-screen w-full bg-[var(--background)] flex items-center justify-center text-[var(--foreground)]">Loading...</div>;
+    return <div className="h-[100dvh] w-full bg-[var(--background)] flex items-center justify-center text-[var(--foreground)]">Loading...</div>;
   }
 
   return (
-    <main className="flex h-screen w-full bg-[var(--background)] text-[var(--foreground)] overflow-hidden">
+    <main className="flex h-[100dvh] w-full bg-[var(--background)] text-[var(--foreground)] overflow-hidden">
       {!user ? (
         <AuthScreen onLogin={setUser} />
       ) : (
