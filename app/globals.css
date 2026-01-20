@@ -77,9 +77,21 @@ body {
 }
 
 /* Re-enable selection for chat messages and inputs */
-.prose, input, textarea {
+.prose,
+input,
+textarea {
   -webkit-user-select: text;
   user-select: text;
+}
+
+/* Prevent iOS auto-zoom on focus by ensuring 16px font size */
+@media screen and (max-width: 768px) {
+
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }
 
 /* Custom Scrollbar */
@@ -244,6 +256,7 @@ body {
     transform: translateY(-10px) scale(0.95);
     opacity: 0;
   }
+
   to {
     transform: translateY(0) scale(1);
     opacity: 1;
@@ -255,6 +268,7 @@ body {
     transform: translateY(0) scale(1);
     opacity: 1;
   }
+
   to {
     transform: translateY(-10px) scale(0.95);
     opacity: 0;
@@ -303,12 +317,15 @@ body {
   .xs\:inline {
     display: inline !important;
   }
+
   .xs\:hidden {
     display: none !important;
   }
+
   .xs\:flex {
     display: flex !important;
   }
+
   .xs\:block {
     display: block !important;
   }
@@ -321,7 +338,8 @@ body {
 }
 
 /* Global tap highlight removal for buttons and links */
-button, a {
+button,
+a {
   -webkit-tap-highlight-color: transparent;
   outline: none;
 }

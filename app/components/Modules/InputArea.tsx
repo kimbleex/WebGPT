@@ -180,7 +180,7 @@ const InputArea = memo(({
                     }}
                     rows={1}
                     placeholder={t("chat.placeholder")}
-                    className="w-full bg-transparent border-none px-2 sm:px-3 py-2.5 text-sm sm:text-base text-[var(--foreground)] placeholder-[var(--text-muted)]/70 focus:outline-none focus:ring-0 resize-none max-h-[150px] sm:max-h-[200px] md:max-h-[300px] overflow-y-auto scrollbar-none leading-relaxed"
+                    className="w-full bg-transparent border-none px-2 sm:px-3 py-2.5 text-base text-[var(--foreground)] placeholder-[var(--text-muted)]/70 focus:outline-none focus:ring-0 resize-none max-h-[150px] sm:max-h-[200px] md:max-h-[300px] overflow-y-auto scrollbar-none leading-relaxed"
                     disabled={isLoading}
                 />
 

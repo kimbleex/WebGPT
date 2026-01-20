@@ -73,7 +73,7 @@ export default function SysPrompt({ sysPrompt, onSysPromptChange }: SysPromptPro
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             placeholder={t("chat.sysPromptPlaceholder")}
-                            className="w-full h-28 sm:h-32 px-3 py-2 text-xs sm:text-sm bg-[var(--hover-bg)]/50 border border-[var(--glass-border)]/50 rounded-lg resize-none focus:outline-none focus:border-[var(--accent-primary)]/50 focus:ring-1 focus:ring-[var(--accent-primary)]/50 transition-all placeholder-[var(--text-muted)]/50"
+                            className="w-full h-28 sm:h-32 px-3 py-2 text-base sm:text-sm bg-[var(--hover-bg)]/50 border border-[var(--glass-border)]/50 rounded-lg resize-none focus:outline-none focus:border-[var(--accent-primary)]/50 focus:ring-1 focus:ring-[var(--accent-primary)]/50 transition-all placeholder-[var(--text-muted)]/50"
                         />
                         <div className="flex items-center justify-end gap-2">
                             <button
