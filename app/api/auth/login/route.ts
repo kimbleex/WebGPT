@@ -1,9 +1,66 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { comparePassword, hashPassword, signToken } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+async function ensureCoreTablesExist() {
+    try {
+        await db.user.findFirst({ select: { id: true } });
+    } catch (error: any) {
+        const message = String(error?.message ?? "");
+        const code = String(error?.code ?? "");
+        const isMissingTable =
+            code === "P2021" ||
+            /relation\s+"?User"?\s+does\s+not\s+exist/i.test(message) ||
+            /table\s+"?User"?\s+does\s+not\s+exist/i.test(message);
+
+        if (!isMissingTable) throw error;
+
+        await db.$executeRaw(
+            Prisma.sql`
+                CREATE TABLE IF NOT EXISTS "User" (
+                    "id" SERIAL PRIMARY KEY,
+                    "username" TEXT NOT NULL,
+                    "password" TEXT NOT NULL,
+                    "role" TEXT NOT NULL DEFAULT 'user',
+                    "expires_at" BIGINT NOT NULL,
+                    "created_at" BIGINT NOT NULL
+                )
+            `
+        );
+        await db.$executeRaw(
+            Prisma.sql`CREATE UNIQUE INDEX IF NOT EXISTS "User_username_key" ON "User"("username")`
+        );
+    }
+
+    try {
+        await db.token.findFirst({ select: { code: true } });
+    } catch (error: any) {
+        const message = String(error?.message ?? "");
+        const code = String(error?.code ?? "");
+        const isMissingTable =
+            code === "P2021" ||
+            /relation\s+"?Token"?\s+does\s+not\s+exist/i.test(message) ||
+            /table\s+"?Token"?\s+does\s+not\s+exist/i.test(message);
+
+        if (!isMissingTable) throw error;
+
+        await db.$executeRaw(
+            Prisma.sql`
+                CREATE TABLE IF NOT EXISTS "Token" (
+                    "code" TEXT PRIMARY KEY,
+                    "duration_hours" INTEGER NOT NULL,
+                    "is_used" INTEGER NOT NULL DEFAULT 0,
+                    "created_by" TEXT NOT NULL,
+                    "created_at" BIGINT NOT NULL
+                )
+            `
+        );
+    }
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -22,6 +79,7 @@ export async function POST(req: NextRequest) {
         if (adminUser && adminPass && username === adminUser) {
             // Verify admin password
             if (password === adminPass) {
+                await ensureCoreTablesExist();
                 // Upsert admin into DB to ensure they exist
                 const existingAdmin = await db.user.findUnique({ where: { username } });
 
@@ -43,7 +101,7 @@ export async function POST(req: NextRequest) {
                     // Update the password in DB to match the Env Var
                     await db.user.update({
                         where: { id: existingAdmin.id },
-                        data: { password: hashedPassword },
+                        data: { password: hashedPassword, role: "admin" },
                     });
                     adminId = existingAdmin.id;
                 }
