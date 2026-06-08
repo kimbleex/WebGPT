@@ -23,7 +23,8 @@ function getJwtSecret() {
     }
 
     if (process.env.NODE_ENV === "production" && secret && secret.length < MIN_PRODUCTION_JWT_SECRET_LENGTH) {
-        throw new Error("JWT_SECRET must be at least 32 characters in production");
+        // Warn but don't crash — allow short secrets while user migrates
+        console.warn(`[AUTH] JWT_SECRET is only ${secret.length} chars; recommend at least ${MIN_PRODUCTION_JWT_SECRET_LENGTH} for production security.`);
     }
 
     return secret || DEFAULT_DEV_JWT_SECRET;

@@ -33,7 +33,8 @@ export async function GET(req: NextRequest) {
             }
         });
 
-    } catch {
+    } catch (error: unknown) {
+        console.error("[ME] Unhandled error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

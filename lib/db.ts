@@ -38,6 +38,17 @@ const prismaClientSingleton = () => {
         throw new Error("Database connection string not found. Please set DATABASE_URL, POSTGRES_URL, or POSTGRES_PRISMA_URL environment variable.");
     }
 
+    // Log which env var was used (redact the password)
+    const envVarName = process.env.DATABASE_URL ? "DATABASE_URL"
+        : process.env.POSTGRES_URL ? "POSTGRES_URL"
+        : "POSTGRES_PRISMA_URL";
+    try {
+        const parsedUrl = new URL(connectionString);
+        console.log(`[DB] Using ${envVarName} → ${parsedUrl.protocol}//${parsedUrl.host}${parsedUrl.pathname}`);
+    } catch {
+        console.log(`[DB] Using ${envVarName} (could not parse URL for logging)`);
+    }
+
     const sslConfig = getDatabaseSslConfig(connectionString);
 
     // Configure pool with appropriate settings for serverless

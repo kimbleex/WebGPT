@@ -33,7 +33,8 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ code });
 
-    } catch {
+    } catch (error: unknown) {
+        console.error("[ADMIN/TOKENS POST] Unhandled error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
@@ -74,7 +75,8 @@ export async function GET(req: NextRequest) {
             totalPages: Math.ceil(total / limit)
         });
 
-    } catch {
+    } catch (error: unknown) {
+        console.error("[ADMIN/TOKENS GET] Unhandled error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

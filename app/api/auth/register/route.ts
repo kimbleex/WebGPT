@@ -67,7 +67,8 @@ export async function POST(req: NextRequest) {
 
         return response;
 
-    } catch {
+    } catch (error: unknown) {
+        console.error("[REGISTER] Unhandled error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

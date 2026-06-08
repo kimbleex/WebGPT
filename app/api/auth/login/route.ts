@@ -158,7 +158,13 @@ export async function POST(req: NextRequest) {
 
         return response;
 
-    } catch {
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    } catch (error: unknown) {
+        // Log the actual error so it appears in Vercel Function Logs
+        console.error("[LOGIN] Unhandled error:", error);
+        const detail = error instanceof Error ? error.message : String(error);
+        return NextResponse.json(
+            { error: "Internal server error", detail: process.env.NODE_ENV !== "production" ? detail : undefined },
+            { status: 500 }
+        );
     }
 }

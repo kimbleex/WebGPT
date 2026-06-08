@@ -58,7 +58,8 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ success: true, expires_at: newExpiry });
 
-    } catch {
+    } catch (error: unknown) {
+        console.error("[RENEW] Unhandled error:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
