@@ -49,8 +49,7 @@ export async function GET(req: NextRequest) {
             totalPages: Math.ceil(total / limit)
         });
 
-    } catch (error) {
-        console.error("User fetch error:", error);
+    } catch {
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

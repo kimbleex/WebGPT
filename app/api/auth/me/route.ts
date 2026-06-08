@@ -33,8 +33,7 @@ export async function GET(req: NextRequest) {
             }
         });
 
-    } catch (error) {
-        console.error("Me error:", error);
+    } catch {
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

@@ -32,8 +32,8 @@ export default function StorageManager({ isOpen, onClose, onSessionsChange, t }:
             if (onSessionsChange) {
                 onSessionsChange(loadedSessions);
             }
-        } catch (error) {
-            console.error("Failed to load storage data:", error);
+        } catch {
+            // Silently handle storage load errors
         } finally {
             setIsLoading(false);
         }
@@ -72,8 +72,7 @@ export default function StorageManager({ isOpen, onClose, onSessionsChange, t }:
             await Promise.all(Array.from(selectedIds).map(id => deleteSession(id)));
             await refreshData();
             setSelectedIds(new Set());
-        } catch (error) {
-            console.error("Failed to delete sessions:", error);
+        } catch {
             alert("Failed to delete some sessions");
         }
     };
@@ -85,8 +84,7 @@ export default function StorageManager({ isOpen, onClose, onSessionsChange, t }:
             await clearAllSessions();
             await refreshData();
             setSelectedIds(new Set());
-        } catch (error) {
-            console.error("Failed to clear sessions:", error);
+        } catch {
             alert("Failed to clear storage");
         }
     };

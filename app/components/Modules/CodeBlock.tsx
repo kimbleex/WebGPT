@@ -111,8 +111,8 @@ const CodeBlock = memo(({ node, inline, className, children, theme, t, ...props 
             await navigator.clipboard.writeText(content);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
-            console.error("Failed to copy:", err);
+        } catch {
+            // Silently handle copy errors
         }
     };
 

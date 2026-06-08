@@ -8,14 +8,20 @@ interface ModelSelectorProps {
 }
 
 export const MODELS = [
-    // { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
-    { id: "gpt-4", name: "GPT-4" },
-    { id: "gpt-5.2-chat", name: "GPT-5.2" },
-    { id: "gemini-3-pro-preview-11-2025", name: "Gemini 3 Pro" },
-    { id: "grok-4.1", name: "Grok-4.1" },
-    { id: "claude-opus-4-5-20251101", name: "Claude Opus 4.5" },
-    // { id: "claude-opus-4-5-20251101", name: "Claude Opus 4.5" },
-    // { id: "claude-3-sonnet", name: "Claude 3 Sonnet" },
+    {
+        id: "gpt-5.5",
+        name: "GPT-5.5",
+        provider: "openai",
+        description: "最新的 OpenAI 模型",
+        icon: "🤖"
+    },
+    {
+        id: "claude-opus-4-8",
+        name: "Claude Opus 4.8",
+        provider: "anthropic",
+        description: "Anthropic 的旗舰模型",
+        icon: "🧠"
+    },
 ];
 
 export default function ModelSelector({ selectedModel, onModelChange }: ModelSelectorProps) {
@@ -66,12 +72,16 @@ export default function ModelSelector({ selectedModel, onModelChange }: ModelSel
                                     onModelChange(model.id);
                                     setIsOpen(false);
                                 }}
-                                className={`w-full text-left px-4 py-3 text-sm transition-all flex items-center justify-between group ${selectedModel === model.id
+                                className={`w-full text-left px-4 py-3 text-sm transition-all flex items-center gap-3 group ${selectedModel === model.id
                                     ? "bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] font-medium"
                                     : "text-[var(--foreground)] hover:bg-[var(--hover-bg)] hover:pl-5"
                                     }`}
                             >
-                                <span>{model.name}</span>
+                                <span className="text-xl">{model.icon}</span>
+                                <div className="flex-1">
+                                    <div className="font-medium">{model.name}</div>
+                                    <div className="text-xs text-[var(--text-muted)] mt-0.5">{model.description}</div>
+                                </div>
                                 {selectedModel === model.id && (
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />

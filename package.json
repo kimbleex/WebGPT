@@ -1,6 +1,6 @@
 {
   "name": "web-gpt",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,6 +10,8 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.81",
+    "@ai-sdk/openai": "^3.0.68",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
     "@tailwindcss/typography": "^0.5.19",
@@ -18,6 +20,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@vercel/postgres": "^0.10.0",
+    "ai": "^6.0.197",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.5.0",
     "html-to-image": "^1.11.13",

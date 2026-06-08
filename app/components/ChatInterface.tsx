@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect, useTransition } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { MODELS } from "./ModelSelector";
 import { useLanguage } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
 import MessageList from "./Modules/MessageList";
 import InputArea from "./Modules/InputArea";
 import StatusBar from "./Modules/StatusBar";
-import { Message } from "./Modules/types";
+import { Message, SearchStatus } from "./Modules/types";
 import { useChatExport } from "./Modules/hooks/useChatExport";
 import { useMemoryMonitor } from "./Modules/hooks/useMemoryMonitor";
 import { useFileHandler, fileToBase64 } from "./Modules/hooks/useFileHandler";
@@ -62,6 +62,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
     const [sysPrompt, setSysPrompt] = useState("");
     const [cleanupFeedback, setCleanupFeedback] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
     const [showStorageManager, setShowStorageManager] = useState(false);
+    const [activeSearchStatus, setActiveSearchStatus] = useState<SearchStatus | null>(null);
 
     // 引用 (Refs)
     // -------------------------------------------------------------------------
@@ -227,8 +228,6 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
         setTimeout(() => {
             setCleanupFeedback(null);
         }, 3000);
-
-        console.log('会话历史已清理，内存已释放');
     };
 
     // 自动隐藏反馈消息 (Auto-hide feedback message)
@@ -241,6 +240,28 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
         }
     }, [cleanupFeedback]);
 
+    // 处理粘贴事件 - 支持粘贴图片 (Handle paste event - support pasting images)
+    const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        const imageFiles: File[] = [];
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.type.startsWith('image/')) {
+                const file = item.getAsFile();
+                if (file) {
+                    imageFiles.push(file);
+                }
+            }
+        }
+
+        if (imageFiles.length > 0) {
+            e.preventDefault(); // 阻止默认粘贴行为
+            setFiles((prev) => [...prev, ...imageFiles]);
+        }
+    }, [setFiles]);
+
     const handleSubmit = async (e?: React.FormEvent) => {
         e?.preventDefault();
 
@@ -249,6 +270,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
 
         // 立即设置加载状态，防止重复点击
         setIsLoading(true);
+        setActiveSearchStatus(null);
 
         // 保存当前输入和文件信息
         const currentInput = input;
@@ -287,7 +309,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                 userContent = contentArray;
             }
 
-            const userMessage: Message = { role: "user", content: userContent };
+            const userMessage: Message = { role: "user", content: userContent, timestamp: Date.now() };
 
             // 优化：限制消息数量，防止内存无限增长
             const newMessages = [...messages, userMessage];
@@ -340,16 +362,111 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             const reader = res.body.getReader();
             const decoder = new TextDecoder();
             let assistantMessage = "";
-            let lastUpdateTime = Date.now(); // 添加时间戳变量
+            let lastUpdateTime = Date.now();
+            const assistantTimestamp = Date.now();
 
             // 添加助手消息到临时变量，避免频繁更新状态
-            const tempMessages = [...trimmedMessages, { role: "assistant" as const, content: "" }];
+            const tempMessages = [...trimmedMessages, { role: "assistant" as const, content: "", timestamp: assistantTimestamp, model: selectedModel }];
             setMessages(tempMessages);
+
+            let streamBuffer = "";
+            let latestSearchStatus: SearchStatus | null = null;
+            const isStructuredStream = res.headers.get("Content-Type")?.includes("application/x-ndjson");
+
+            const updateAssistantMessage = () => {
+                setMessages(prev => {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = {
+                        role: "assistant",
+                        content: assistantMessage,
+                        timestamp: assistantTimestamp,
+                        model: selectedModel,
+                        searchStatus: latestSearchStatus || undefined,
+                    };
+                    return updated;
+                });
+            };
+
+            const appendAssistantText = (text: string) => {
+                if (
+                    latestSearchStatus?.phase === "checking" &&
+                    !latestSearchStatus.sources?.length &&
+                    !latestSearchStatus.queries?.length
+                ) {
+                    latestSearchStatus = null;
+                    setActiveSearchStatus(null);
+                }
+                assistantMessage += text;
+                const now = Date.now();
+                if (now - lastUpdateTime > 100) {
+                    updateAssistantMessage();
+                    lastUpdateTime = now;
+                }
+            };
+
+            const mergeSearchStatus = (incoming: SearchStatus) => {
+                const existingSources = latestSearchStatus?.sources || [];
+                const incomingSources = incoming.sources || [];
+                const sourceMap = new Map(existingSources.map(source => [source.url, source]));
+                for (const source of incomingSources) {
+                    sourceMap.set(source.url, source);
+                }
+
+                const existingQueries = latestSearchStatus?.queries || [];
+                const incomingQueries = incoming.queries || [];
+                latestSearchStatus = {
+                    ...latestSearchStatus,
+                    ...incoming,
+                    queries: Array.from(new Set([...existingQueries, ...incomingQueries])).slice(0, 6),
+                    sources: Array.from(sourceMap.values()).slice(0, 8),
+                };
+                setActiveSearchStatus(latestSearchStatus);
+                updateAssistantMessage();
+            };
+
+            const handleStreamEvent = (line: string) => {
+                if (!line.trim()) return;
+
+                const event = JSON.parse(line);
+                if (event.type === "text") {
+                    appendAssistantText(event.content || "");
+                    return;
+                }
+
+                if (event.type === "search_status") {
+                    mergeSearchStatus({
+                        phase: event.phase || "searching",
+                        message: event.message || "模型正在联网搜索...",
+                        queries: event.queries || [],
+                        sources: event.sources || [],
+                    });
+                }
+            };
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 const chunk = decoder.decode(value, { stream: true });
+
+                if (!isStructuredStream) {
+                    appendAssistantText(chunk);
+                    continue;
+                }
+
+                streamBuffer += chunk;
+                const lines = streamBuffer.split("\n");
+                streamBuffer = lines.pop() || "";
+
+                for (const line of lines) {
+                    try {
+                        handleStreamEvent(line);
+                    } catch {
+                        appendAssistantText(line);
+                    }
+                }
+                continue;
+
+                // 纯文本流，直接追加
                 assistantMessage += chunk;
 
                 // 优化：减少状态更新频率，每100ms更新一次
@@ -357,7 +474,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                 if (now - lastUpdateTime > 100) {
                     setMessages(prev => {
                         const updated = [...prev];
-                        updated[updated.length - 1] = { role: "assistant", content: assistantMessage };
+                        updated[updated.length - 1] = { role: "assistant", content: assistantMessage, timestamp: assistantTimestamp, model: selectedModel };
                         return updated;
                     });
                     lastUpdateTime = now;
@@ -365,16 +482,29 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             }
 
             // 最终更新一次完整消息
-            const finalMessages = [...trimmedMessages, { role: "assistant" as const, content: assistantMessage }];
-            const finalTrimmedMessages = finalMessages.length > MAX_MESSAGES
+            const finalMessages = [...trimmedMessages, { role: "assistant" as const, content: assistantMessage, model: selectedModel }];
+            if (isStructuredStream && streamBuffer.trim()) {
+                try {
+                    handleStreamEvent(streamBuffer);
+                } catch {
+                    appendAssistantText(streamBuffer);
+                }
+            }
+            updateAssistantMessage();
+
+            const finalTrimmedMessages = (finalMessages.length > MAX_MESSAGES
                 ? finalMessages.slice(-MAX_MESSAGES)
-                : finalMessages;
+                : finalMessages
+            ).map((message, index, allMessages) => (
+                index === allMessages.length - 1 && message.role === "assistant"
+                    ? { ...message, searchStatus: latestSearchStatus || undefined }
+                    : message
+            ));
 
             setMessages(finalTrimmedMessages);
             onMessagesChange?.(finalTrimmedMessages);
 
         } catch (error: any) {
-            console.error("Chat error:", error);
             const errorMsg = `Error: ${error.message || "Something went wrong."}`;
 
             // 优化：限制错误消息的数量
@@ -387,6 +517,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             onMessagesChange?.(finalErrorMessages);
         } finally {
             setIsLoading(false);
+            setActiveSearchStatus(null);
         }
     };
 
@@ -409,14 +540,14 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             {/* Messages Area - Now using flex-1 to take up all available space */}
             <div
                 ref={chatContainerRef}
-                className="flex-1 overflow-y-auto relative scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+                className="flex-1 overflow-y-auto relative scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent flex flex-col"
             >
                 {/* Header - Still absolute but scoped to the scrollable area or the main container */}
                 <div className="sticky top-0 left-0 right-0 z-20 flex justify-center pointer-events-none px-4 pt-4 no-export">
                     {/* ModelSelector removed from here */}
                 </div>
 
-                <div className="pt-4 pb-4">
+                <div className="flex-1 flex flex-col justify-start pt-4 pb-2">
                     <MessageList
                         messages={messages}
                         visibleMessages={visibleMessages}
@@ -427,6 +558,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                         messagesEndRef={messagesEndRef}
                         user={user}
                         selectedModel={selectedModel}
+                        activeSearchStatus={activeSearchStatus}
                         theme={theme}
                         t={t}
                     />
@@ -434,15 +566,15 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
             </div>
 
             {/* Input Area - Now a regular flex child, naturally staying at the bottom */}
-            <div className="flex-shrink-0 p-3 sm:p-6 lg:p-8 pb-[env(safe-area-inset-bottom)] bg-[var(--background)] border-t border-[var(--glass-border)]/10 no-export">
-                <div className="max-w-5xl mx-auto space-y-3">
+            <div className="flex-shrink-0 p-2 sm:p-2.5 pb-[env(safe-area-inset-bottom)] bg-[var(--background)] border-t border-[var(--glass-border)]/10 no-export">
+                <div className="max-w-5xl mx-auto space-y-2">
                     {/* Cleanup Feedback */}
                     {cleanupFeedback && (
-                        <div className={`flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium animate-in fade-in slide-in-from-bottom-2 duration-300 ${cleanupFeedback.type === 'success'
+                        <div className={`flex items-center justify-center px-3 py-1.5 text-xs font-medium animate-in fade-in slide-in-from-bottom-2 duration-300 ${cleanupFeedback.type === 'success'
                             ? 'bg-green-500/20 text-green-600 border border-green-500/30'
                             : 'bg-blue-500/20 text-blue-600 border border-blue-500/30'
                             }`}>
-                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-3 h-3 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 {cleanupFeedback.type === 'success' ? (
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 ) : (
@@ -455,11 +587,11 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
 
                     {/* Export Feedback */}
                     {exportFeedback && (
-                        <div className={`flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium animate-in fade-in slide-in-from-bottom-2 duration-300 ${exportFeedback.type === 'success'
+                        <div className={`flex items-center justify-center px-3 py-1.5 text-xs font-medium animate-in fade-in slide-in-from-bottom-2 duration-300 ${exportFeedback.type === 'success'
                             ? 'bg-green-500/20 text-green-600 border border-green-500/30'
                             : 'bg-blue-500/20 text-blue-600 border border-blue-500/30'
                             }`}>
-                            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-3 h-3 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             {exportFeedback.message}
@@ -491,6 +623,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                         setIsComposing={setIsComposing}
                         handleSubmit={handleSubmit}
                         handleFileChange={handleFileChange}
+                        handlePaste={handlePaste}
                         removeFile={removeFile}
                         files={files}
                         imageUrlMap={imageUrlMap}
@@ -505,8 +638,8 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                         t={t}
                     />
                 </div>
-                <div className="text-center mt-3">
-                    <p className="text-xs text-[var(--text-muted)]">
+                <div className="text-center mt-2">
+                    <p className="text-[10px] text-[var(--text-muted)] font-mono">
                         {t("chat.disclaimer")}
                     </p>
                 </div>

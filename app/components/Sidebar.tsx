@@ -59,39 +59,62 @@ export default function Sidebar({
 
     return (
         <>
-            {/* Mobile Toggle */}
+            {/* Mobile Toggle Button - Terminal Style */}
             <button
                 onClick={() => setIsMobileOpen(!isMobileOpen)}
-                className="lg:hidden fixed top-4 left-4 z-50 p-2.5 rounded-xl bg-[var(--panel-bg)] border border-[var(--glass-border)] text-[var(--foreground)] shadow-xl backdrop-blur-md transition-all active:scale-95"
+                className="lg:hidden fixed top-4 left-4 z-50 p-2 glass-panel border border-[var(--border-color)] hover:border-[var(--hover-border)] transition-all group"
+                aria-label="Toggle sidebar"
             >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <svg className="w-6 h-6 text-[var(--accent-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    {isMobileOpen ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    )}
                 </svg>
             </button>
 
-            {/* Sidebar Container */}
-            <div
-                className={`fixed inset-y-0 left-0 z-40 w-[80vw] sm:w-72 bg-[var(--sidebar-bg)] border-r border-[var(--glass-border)] transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:h-full ${isMobileOpen ? "translate-x-0" : "-translate-x-full"
-                    }`}
-            >
-                <div className="flex flex-col h-full p-3 sm:p-4">
-                    {/* Header / New Chat */}
-                    <div className="mb-4 sm:mb-6">
-                        <button
-                            onClick={() => {
-                                onNewChat();
-                                setIsMobileOpen(false);
-                            }}
-                            className="w-full flex items-center justify-center space-x-2 bg-[var(--accent-primary)] hover:opacity-90 text-white py-3 rounded-xl transition-all shadow-lg shadow-indigo-500/20 active:scale-[0.98]"
-                        >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                            <span className="font-medium">{t("sidebar.newChat")}</span>
-                        </button>
-                    </div>
+            {/* Mobile Overlay */}
+            {isMobileOpen && (
+                <div
+                    className="lg:hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-40 animate-fade-in"
+                    onClick={() => setIsMobileOpen(false)}
+                />
+            )}
 
-                    {/* Session List */}
+            {/* Sidebar - Terminal Style */}
+            <aside
+                className={`
+                    fixed lg:relative inset-y-0 left-0 z-40
+                    w-72 lg:w-80
+                    bg-[var(--sidebar-bg)]
+                    border-r-2 border-[var(--border-color)]
+                    flex flex-col
+                    transition-transform duration-300 ease-out
+                    ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+                    shadow-[4px_0_20px_rgba(0,255,159,0.1)]
+                `}
+            >
+                {/* Terminal Header */}
+                <div className="flex-shrink-0 p-4 border-b-2 border-[var(--border-color)] bg-[var(--panel-bg)]">
+                    {/* New Chat Button - Terminal Style */}
+                    <button
+                        onClick={() => {
+                            onNewChat();
+                            setIsMobileOpen(false);
+                        }}
+                        className="w-full btn-terminal py-3 flex items-center justify-center gap-2 group"
+                    >
+                        <span className="text-[var(--accent-primary)] group-hover:text-[var(--background)] transition-colors">&gt;</span>
+                        <span className="font-mono text-sm tracking-wider">{t("sidebar.newSession")}</span>
+                        <svg className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* Session List */}
+                <div className="flex-1 overflow-y-auto scrollbar-thin">
                     <SessionList
                         sessions={sessions}
                         activeSessionId={activeSessionId}
@@ -102,30 +125,22 @@ export default function Sidebar({
                         onDeleteSession={onDeleteSession}
                         t={t}
                     />
-
-                    {/* Footer */}
-                    <SidebarFooter
-                        user={user}
-                        showRenew={showRenew}
-                        setShowRenew={setShowRenew}
-                        renewToken={renewToken}
-                        setRenewToken={setRenewToken}
-                        handleRenew={handleRenew}
-                        onLogout={onLogout}
-                        t={t}
-                        language={language}
-                        setLanguage={setLanguage}
-                    />
                 </div>
-            </div>
 
-            {/* Mobile Overlay */}
-            {isMobileOpen && (
-                <div
-                    className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
-                    onClick={() => setIsMobileOpen(false)}
+                {/* Footer */}
+                <SidebarFooter
+                    user={user}
+                    onLogout={onLogout}
+                    language={language}
+                    setLanguage={setLanguage}
+                    renewToken={renewToken}
+                    setRenewToken={setRenewToken}
+                    showRenew={showRenew}
+                    setShowRenew={setShowRenew}
+                    handleRenew={handleRenew}
+                    t={t}
                 />
-            )}
+            </aside>
         </>
     );
 }

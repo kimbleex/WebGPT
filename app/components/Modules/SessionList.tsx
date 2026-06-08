@@ -34,39 +34,47 @@ export default function SessionList({
     t
 }: SessionListProps) {
     return (
-        <div className="flex-1 overflow-y-auto space-y-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+        <div className="flex-1 overflow-y-auto space-y-1 p-2 scrollbar-thin">
             {sessions.length === 0 ? (
                 <div className="text-center text-[var(--text-muted)] mt-10 text-sm">
-                    {t("sidebar.noHistory")}
+                    {t("sidebar.noSessions")}
                 </div>
             ) : (
                 sessions.map((session) => (
                     <div
                         key={session.id}
-                        className="group relative flex items-center"
+                        className="group relative"
                     >
                         <button
                             onClick={() => onSelectSession(session.id)}
-                            className={`flex-1 text-left px-4 pr-10 sm:pr-12 py-3 rounded-xl text-sm transition-all truncate ${activeSessionId === session.id
-                                ? "bg-[var(--hover-bg)] text-[var(--foreground)] font-medium"
-                                : "text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--foreground)]"
-                                }`}
+                            className={`w-full text-left px-3 py-2.5 pr-8 text-xs font-mono transition-all truncate border flex items-center gap-2 ${
+                                activeSessionId === session.id
+                                    ? "bg-[var(--hover-bg)] text-[var(--accent-primary)] border-[var(--accent-primary)] shadow-[0_0_10px_rgba(0,255,159,0.2)]"
+                                    : "text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--foreground)] border-transparent hover:border-[var(--border-color)]"
+                            }`}
                         >
-                            {session.title || t("sidebar.newConversation")}
+                            <span className={activeSessionId === session.id ? "text-[var(--accent-primary)]" : "text-[var(--text-muted)]"}>&gt;</span>
+                            <span className="truncate flex-1">{session.title || t("sidebar.newConversation")}</span>
                         </button>
 
-                        {/* Delete Button (visible on hover or if active) */}
+                        {/* Active indicator yields the action slot to the delete button on hover/focus. */}
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                            {activeSessionId === session.id && (
+                                <span className="w-1.5 h-1.5 bg-[var(--accent-primary)] rounded-full animate-pulse block group-hover:hidden group-focus-within:hidden"></span>
+                            )}
+                        </div>
+
+                        {/* Delete Button */}
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onDeleteSession(session.id);
                             }}
-                            className={`absolute right-2 sm:right-3 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-400 hover:bg-[var(--hover-bg)] transition-all opacity-0 group-hover:opacity-100 ${activeSessionId === session.id ? "opacity-100" : ""
-                                }`}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--error-color)] hover:bg-[var(--hover-bg)] border border-transparent hover:border-[var(--error-color)] transition-all opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
                             title="Delete chat"
                         >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
                     </div>

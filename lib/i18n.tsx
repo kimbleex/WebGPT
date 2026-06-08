@@ -25,8 +25,11 @@ const translations = {
             defaultSubtitleRegister: "Register with a valid token",
         },
         sidebar: {
+            terminal: "Terminal",
+            newSession: "New Session",
             newChat: "New Chat",
             noHistory: "No history yet.",
+            noSessions: "No sessions",
             newConversation: "New Conversation",
             expires: "Expires:",
             renew: "Renew Subscription",
@@ -69,6 +72,8 @@ const translations = {
             sysPromptSave: "Save",
             sysPromptClear: "Clear",
             sysPromptActive: "Active",
+            noConversations: "No conversations yet",
+            createNewChat: "Create a new chat to get started",
         },
         admin: {
             panel: "Admin Panel",
@@ -130,6 +135,26 @@ const translations = {
                 unknown: "Unknown Setting",
             }
         },
+        profile: {
+            title: "Profile",
+            personalInfo: "Personal Info",
+            tokenManagement: "Token Management",
+            userManagement: "User Management",
+            accountInfo: "Account Information",
+            role: "Role",
+            admin: "Admin",
+            changePassword: "Change Password",
+            oldPassword: "Current Password",
+            newPassword: "New Password",
+            confirmPassword: "Confirm Password",
+            oldPasswordPlaceholder: "Enter current password",
+            newPasswordPlaceholder: "Enter new password (min 6 characters)",
+            confirmPasswordPlaceholder: "Confirm new password",
+            passwordMismatch: "Passwords do not match",
+            passwordTooShort: "Password must be at least 6 characters",
+            passwordChangeSuccess: "Password changed successfully!",
+            passwordChangeFail: "Failed to change password",
+        },
     },
     cn: {
         auth: {
@@ -150,8 +175,11 @@ const translations = {
             defaultSubtitleRegister: "使用有效邀请码注册",
         },
         sidebar: {
+            terminal: "终端",
+            newSession: "新建会话",
             newChat: "新对话",
             noHistory: "暂无历史记录",
+            noSessions: "暂无会话",
             newConversation: "新对话",
             expires: "有效期至",
             renew: "延长使用期限",
@@ -194,6 +222,8 @@ const translations = {
             sysPromptSave: "保存",
             sysPromptClear: "清空",
             sysPromptActive: "已启用",
+            noConversations: "暂无对话记录",
+            createNewChat: "点击新建开始对话",
         },
         admin: {
             panel: "管理面板",
@@ -255,6 +285,26 @@ const translations = {
                 unknown: "未知设置",
             }
         },
+        profile: {
+            title: "个人信息管理",
+            personalInfo: "个人信息",
+            tokenManagement: "Token生成",
+            userManagement: "用户管理",
+            accountInfo: "账户信息",
+            role: "角色",
+            admin: "管理员",
+            changePassword: "修改密码",
+            oldPassword: "当前密码",
+            newPassword: "新密码",
+            confirmPassword: "确认密码",
+            oldPasswordPlaceholder: "输入当前密码",
+            newPasswordPlaceholder: "输入新密码（至少6位）",
+            confirmPasswordPlaceholder: "再次输入新密码",
+            passwordMismatch: "两次输入的密码不一致",
+            passwordTooShort: "密码长度至少为6位",
+            passwordChangeSuccess: "密码修改成功！",
+            passwordChangeFail: "密码修改失败",
+        },
     },
 };
 
@@ -267,7 +317,7 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-    const [language, setLanguage] = useState<Language>("en");
+    const [language, setLanguage] = useState<Language>("cn");
 
     useEffect(() => {
         const loadLang = async () => {

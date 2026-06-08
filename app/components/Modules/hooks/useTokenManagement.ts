@@ -39,8 +39,8 @@ export function useTokenManagement() {
                 setTotalPages(data.totalPages);
                 setPage(data.page);
             }
-        } catch (e) {
-            console.error("Failed to fetch tokens");
+        } catch {
+            // Silently handle token fetch errors
         }
     };
 
@@ -59,8 +59,7 @@ export function useTokenManagement() {
                 return true;
             }
             return false;
-        } catch (e) {
-            console.error("Failed to generate token");
+        } catch {
             return false;
         } finally {
             setLoading(false);

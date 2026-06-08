@@ -8,6 +8,7 @@ interface InputAreaProps {
     setIsComposing: (value: boolean) => void;
     handleSubmit: (e?: React.FormEvent) => void;
     handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    handlePaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
     removeFile: (index: number) => void;
     files: File[];
     imageUrlMap: Map<number, string>;
@@ -30,6 +31,7 @@ const InputArea = memo(({
     setIsComposing,
     handleSubmit,
     handleFileChange,
+    handlePaste,
     removeFile,
     files,
     imageUrlMap,
@@ -44,9 +46,12 @@ const InputArea = memo(({
     t
 }: InputAreaProps) => {
     return (
-        <div className="bg-[var(--panel-bg)]/70 backdrop-blur-2xl border border-[var(--glass-border)] rounded-xl sm:rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-visible animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="bg-[var(--panel-bg)] backdrop-blur-xl border-2 border-[var(--border-color)] shadow-[var(--shadow-terminal)] overflow-visible relative">
+            {/* Terminal prompt line */}
+            <div className="absolute top-0 left-0 right-0 h-px bg-[var(--accent-gradient)]"></div>
+
             {/* Input Section */}
-            <form onSubmit={handleSubmit} className="relative bg-transparent flex items-center p-2 sm:p-3 md:p-4 gap-1 sm:gap-2">
+            <form onSubmit={handleSubmit} className="relative bg-transparent flex items-center p-2 gap-2">
                 <input
                     type="file"
                     ref={fileInputRef}
@@ -56,7 +61,12 @@ const InputArea = memo(({
                     accept="image/*"
                 />
 
-                {/* Consolidated Action Button */}
+                {/* Terminal prompt indicator */}
+                <div className="flex-shrink-0 flex items-center">
+                    <span className="text-[var(--accent-primary)] font-mono font-bold text-base">&gt;</span>
+                </div>
+
+                {/* Consolidated Action Button - Terminal Style */}
                 <div className="relative" ref={actionMenuRef}>
                     <button
                         type="button"
@@ -64,18 +74,21 @@ const InputArea = memo(({
                             setShowActionMenu(!showActionMenu);
                             setActiveSubmenu(null);
                         }}
-                        className={`p-2.5 sm:p-3 text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--hover-bg)] rounded-xl transition-all mb-1 flex items-center justify-center active:scale-90 touch-manipulation ${showActionMenu ? 'bg-[var(--hover-bg)] text-[var(--foreground)]' : ''}`}
+                        className={`p-1.5 text-[var(--text-muted)] hover:text-[var(--accent-primary)] border border-[var(--border-color)] hover:border-[var(--hover-border)] transition-all flex items-center justify-center active:scale-95 touch-manipulation ${showActionMenu ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]' : ''}`}
                         title={t("chat.actions")}
                     >
-                        <svg className={`w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-300 ${showActionMenu ? 'rotate-45' : 'rotate-0'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className={`w-4 h-4 transition-transform duration-300 ${showActionMenu ? 'rotate-45' : 'rotate-0'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
                     </button>
 
                     {showActionMenu && (
-                        <div className="absolute bottom-full left-0 mb-2 sm:mb-4 w-[calc(100vw-2rem)] sm:w-64 max-w-[280px] py-2 rounded-xl sm:rounded-2xl bg-[var(--panel-bg)] border border-[var(--glass-border)] shadow-2xl z-[101] overflow-visible animate-in fade-in slide-in-from-bottom-2 duration-200">
-                            <div className="px-4 py-2 border-b border-[var(--glass-border)]/10">
-                                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{t("chat.actions")}</p>
+                        <div className="absolute bottom-full left-0 mb-3 w-[calc(100vw-2rem)] sm:w-64 max-w-[280px] py-2 bg-[var(--panel-bg)] border-2 border-[var(--border-color)] shadow-[var(--shadow-terminal)] z-[101] animate-slide-in">
+                            <div className="px-4 py-2 border-b-2 border-[var(--border-color)] bg-[var(--code-header-bg)]">
+                                <p className="text-[10px] font-bold font-mono text-[var(--accent-primary)] uppercase tracking-widest flex items-center gap-2">
+                                    <span>&gt;</span>
+                                    {t("chat.actions")}
+                                </p>
                             </div>
 
                             {/* Upload Image - Single Action */}
@@ -166,6 +179,7 @@ const InputArea = memo(({
                         const newValue = e.target.value;
                         setInput(newValue);
                     }}
+                    onPaste={handlePaste}
                     onCompositionStart={() => setIsComposing(true)}
                     onCompositionEnd={() => setIsComposing(false)}
                     onKeyDown={(e) => {
@@ -180,32 +194,25 @@ const InputArea = memo(({
                     }}
                     rows={1}
                     placeholder={t("chat.placeholder")}
-                    className="w-full bg-transparent border-none px-2 sm:px-3 py-2.5 text-base text-[var(--foreground)] placeholder-[var(--text-muted)]/70 focus:outline-none focus:ring-0 resize-none max-h-[150px] sm:max-h-[200px] md:max-h-[300px] overflow-y-auto scrollbar-none leading-relaxed"
+                    className="flex-1 bg-transparent border-none px-2 py-1.5 text-sm text-[var(--foreground)] placeholder-[var(--text-muted)] focus:outline-none resize-none max-h-[100px] overflow-y-auto scrollbar-thin font-mono leading-relaxed"
                     disabled={isLoading}
+                    style={{ minHeight: '32px' }}
                 />
 
                 <button
                     type="submit"
-                    disabled={(!input.trim() && files.length === 0) || isLoading}
-                    onClick={(e) => {
-                        // 防止重复点击
-                        if (isLoading) {
-                            e.preventDefault();
-                            return;
-                        }
-                    }}
-                    className="p-2.5 sm:p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/20 ml-1 sm:ml-2 flex-shrink-0 self-center active:scale-90 touch-manipulation"
+                    disabled={isLoading || (!input.trim() && files.length === 0)}
+                    className="flex-shrink-0 p-2 border-2 border-[var(--border-color)] hover:border-[var(--accent-primary)] disabled:border-[var(--border-color)] disabled:opacity-40 bg-transparent hover:bg-[var(--accent-primary)] disabled:bg-transparent text-[var(--accent-primary)] hover:text-[var(--background)] disabled:text-[var(--text-muted)] transition-all active:scale-95 touch-manipulation group relative overflow-hidden"
+                    title={isLoading ? t("chat.sending") : t("chat.send")}
                 >
                     {isLoading ? (
-                        <svg className="animate-spin w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
+                        <div className="w-4 h-4 border-2 border-[var(--text-muted)] border-t-transparent rounded-full animate-spin"></div>
                     ) : (
-                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 12h14M12 5l7 7-7 7" />
+                        <svg className="w-4 h-4 transform rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                         </svg>
                     )}
+                    <div className="absolute inset-0 bg-[var(--accent-gradient)] opacity-0 group-hover:opacity-100 transition-opacity -z-10"></div>
                 </button>
             </form>
         </div>

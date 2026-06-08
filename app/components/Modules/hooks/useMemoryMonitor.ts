@@ -37,7 +37,6 @@ export function useMemoryMonitor(options?: { onHighMemory?: () => void }) {
         const isMemoryApiSupported = (performance as any).memory !== undefined;
 
         if (!isMemoryApiSupported) {
-            console.log('当前浏览器不支持 memory API，内存监控不可用');
             return;
         }
 
@@ -53,8 +52,6 @@ export function useMemoryMonitor(options?: { onHighMemory?: () => void }) {
 
                 // 如果内存使用超过80%，触发清理
                 if (usedMB > limitMB * 0.8) {
-                    console.warn(`内存使用过高: ${usedMB}MB/${limitMB}MB，触发清理`);
-
                     // 触发回调
                     optionsRef.current?.onHighMemory?.();
 

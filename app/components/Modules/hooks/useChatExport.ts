@@ -104,8 +104,8 @@ export function useChatExport(
                             img.src = data.dataUrl;
                         }
                     }
-                } catch (error) {
-                    console.warn('Image proxy error:', error);
+                } catch {
+                    // Silently handle image proxy errors
                 }
             });
 
@@ -115,8 +115,8 @@ export function useChatExport(
                     Promise.all(imageProcessingPromises),
                     new Promise(resolve => setTimeout(resolve, 10000)) // 10 second timeout
                 ]);
-            } catch (error) {
-                console.warn('Some images failed to process, continuing with export:', error);
+            } catch {
+                // Silently handle image processing errors
             }
 
             // Wait a bit for images to load after conversion
@@ -163,8 +163,6 @@ export function useChatExport(
                     }
                 });
             } catch (pngError: any) {
-                console.error('toPng error details:', pngError);
-
                 // Try alternative method with different options
                 try {
                     dataUrl = await toPng(node, {
@@ -220,8 +218,6 @@ export function useChatExport(
             });
 
         } catch (error: any) {
-            console.error('Export failed with details:', error);
-
             // Restore styles even on error
             if (chatContainerRef.current) {
                 const node = chatContainerRef.current;

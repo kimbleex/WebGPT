@@ -58,8 +58,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ success: true, expires_at: newExpiry });
 
-    } catch (error) {
-        console.error("Renew error:", error);
+    } catch {
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

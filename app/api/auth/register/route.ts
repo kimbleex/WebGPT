@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 import { hashPassword, signToken } from "@/lib/auth";
+import { AUTH_COOKIE_NAME, getAuthCookieOptions } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,12 +63,11 @@ export async function POST(req: NextRequest) {
                 expires_at: expiresAt
             }
         });
-        response.cookies.set("token", authToken, { httpOnly: true, path: "/" });
+        response.cookies.set(AUTH_COOKIE_NAME, authToken, getAuthCookieOptions());
 
         return response;
 
-    } catch (error) {
-        console.error("Register error:", error);
+    } catch {
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

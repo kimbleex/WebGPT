@@ -36,8 +36,8 @@ export function useUserManagement(): UseUserManagementReturn {
                 setTotalPages(data.totalPages);
                 setPage(data.page);
             }
-        } catch (error) {
-            console.error("Failed to fetch users:", error);
+        } catch {
+            // Silently handle user fetch errors
         } finally {
             setLoading(false);
         }

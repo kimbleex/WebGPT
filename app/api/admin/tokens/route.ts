@@ -33,8 +33,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ code });
 
-    } catch (error) {
-        console.error("Token generation error:", error);
+    } catch {
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
@@ -75,8 +74,7 @@ export async function GET(req: NextRequest) {
             totalPages: Math.ceil(total / limit)
         });
 
-    } catch (error) {
-        console.error("Token fetch error:", error);
+    } catch {
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

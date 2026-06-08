@@ -2,16 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { comparePassword, hashPassword, signToken } from "@/lib/auth";
+import { AUTH_COOKIE_NAME, getAuthCookieOptions } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function getErrorDetails(error: unknown) {
+    const candidate = error as { code?: unknown; message?: unknown };
+
+    return {
+        code: String(candidate?.code ?? ""),
+        message: String(candidate?.message ?? ""),
+    };
+}
+
 async function ensureCoreTablesExist() {
     try {
         await db.user.findFirst({ select: { id: true } });
-    } catch (error: any) {
-        const message = String(error?.message ?? "");
-        const code = String(error?.code ?? "");
+    } catch (error: unknown) {
+        const { code, message } = getErrorDetails(error);
         const isMissingTable =
             code === "P2021" ||
             /relation\s+"?User"?\s+does\s+not\s+exist/i.test(message) ||
@@ -38,9 +47,8 @@ async function ensureCoreTablesExist() {
 
     try {
         await db.token.findFirst({ select: { code: true } });
-    } catch (error: any) {
-        const message = String(error?.message ?? "");
-        const code = String(error?.code ?? "");
+    } catch (error: unknown) {
+        const { code, message } = getErrorDetails(error);
         const isMissingTable =
             code === "P2021" ||
             /relation\s+"?Token"?\s+does\s+not\s+exist/i.test(message) ||
@@ -69,8 +77,6 @@ export async function POST(req: NextRequest) {
         if (!username || !password) {
             return NextResponse.json({ error: "Missing credentials" }, { status: 400 });
         }
-
-        console.log(`Login attempt for username: ${username}`);
 
         // 1. Check if it's the Super Admin logging in via Env Vars
         const adminUser = process.env.ADMIN_USERNAME;
@@ -116,7 +122,7 @@ export async function POST(req: NextRequest) {
                         expires_at: 253402300799999
                     }
                 });
-                response.cookies.set("token", token, { httpOnly: true, path: "/" });
+                response.cookies.set(AUTH_COOKIE_NAME, token, getAuthCookieOptions());
                 return response;
             }
         }
@@ -130,7 +136,6 @@ export async function POST(req: NextRequest) {
 
         const isValid = await comparePassword(password, user.password);
         if (!isValid) {
-            console.log(`Invalid password for user: ${username}`);
             return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
         }
 
@@ -149,12 +154,11 @@ export async function POST(req: NextRequest) {
                 expires_at: Number(user.expires_at)
             }
         });
-        response.cookies.set("token", token, { httpOnly: true, path: "/" });
+        response.cookies.set(AUTH_COOKIE_NAME, token, getAuthCookieOptions());
 
         return response;
 
-    } catch (error) {
-        console.error("Login error:", error);
+    } catch {
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
