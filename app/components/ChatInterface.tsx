@@ -111,7 +111,15 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
     };
 
     // 初始化可见消息 (Initialize visible messages)
+    // Skip re-initialization during streaming to avoid double-render overhead
     useEffect(() => {
+        if (isLoading) {
+            // During streaming, just ensure the latest messages are visible
+            // without resetting batch state
+            setVisibleMessages(messages);
+            requestAnimationFrame(() => scrollToBottom());
+            return;
+        }
         const totalMessages = messages.length;
         const startIndex = Math.max(0, totalMessages - MESSAGE_BATCH_SIZE);
         const initialVisible = messages.slice(startIndex);
@@ -121,7 +129,7 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
 
         // 延迟滚动到底部，确保DOM已更新
         setTimeout(() => scrollToBottom(), 100);
-    }, [messages]);
+    }, [messages, isLoading]);
 
     // 懒加载更多消息 (Lazy load more messages)
     useEffect(() => {
@@ -398,7 +406,8 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                 }
                 assistantMessage += text;
                 const now = Date.now();
-                if (now - lastUpdateTime > 100) {
+                // Reduced throttle for smoother token-by-token rendering
+                if (now - lastUpdateTime > 30) {
                     updateAssistantMessage();
                     lastUpdateTime = now;
                 }
@@ -465,20 +474,6 @@ export default function ChatInterface({ accessPassword, initialMessages = [], on
                     }
                 }
                 continue;
-
-                // 纯文本流，直接追加
-                assistantMessage += chunk;
-
-                // 优化：减少状态更新频率，每100ms更新一次
-                const now = Date.now();
-                if (now - lastUpdateTime > 100) {
-                    setMessages(prev => {
-                        const updated = [...prev];
-                        updated[updated.length - 1] = { role: "assistant", content: assistantMessage, timestamp: assistantTimestamp, model: selectedModel };
-                        return updated;
-                    });
-                    lastUpdateTime = now;
-                }
             }
 
             // 最终更新一次完整消息
