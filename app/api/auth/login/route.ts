@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
         console.error("[LOGIN] Unhandled error:", error);
         const detail = error instanceof Error ? error.message : String(error);
         return NextResponse.json(
-            { error: "Internal server error", detail: process.env.NODE_ENV !== "production" ? detail : undefined },
+            { error: "Internal server error", detail },
             { status: 500 }
         );
     }
