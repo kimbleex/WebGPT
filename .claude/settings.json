@@ -4,7 +4,8 @@
       "Bash(npm list *)",
       "Bash(cd /f/\\\\#myProjects/WebGPT/web-gpt && cat prisma/schema.prisma | grep -A 5 \"datasource db\")",
       "Read(//f/f/#myProjects/WebGPT/web-gpt/prisma/**)",
-      "Bash(npx prisma *)"
+      "Bash(npx prisma *)",
+      "Bash(node check-deployment.js)"
     ]
   }
 }

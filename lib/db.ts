@@ -28,13 +28,33 @@ function getDatabaseSslConfig(connectionString: string | undefined) {
 }
 
 const prismaClientSingleton = () => {
+    // Prioritize DATABASE_URL for direct connection
     const connectionString =
         process.env.DATABASE_URL ||
         process.env.POSTGRES_URL ||
         process.env.POSTGRES_PRISMA_URL;
-    const pool = new pg.Pool({ connectionString, ssl: getDatabaseSslConfig(connectionString) });
+
+    if (!connectionString) {
+        throw new Error("Database connection string not found. Please set DATABASE_URL, POSTGRES_URL, or POSTGRES_PRISMA_URL environment variable.");
+    }
+
+    const sslConfig = getDatabaseSslConfig(connectionString);
+
+    // Configure pool with appropriate settings for serverless
+    const pool = new pg.Pool({
+        connectionString,
+        ssl: sslConfig,
+        max: 10, // Maximum pool size
+        idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+        connectionTimeoutMillis: 10000, // Timeout after 10 seconds
+    });
+
     const adapter = new PrismaPg(pool);
-    return new PrismaClient({ adapter });
+
+    return new PrismaClient({
+        adapter,
+        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    });
 };
 
 declare global {
