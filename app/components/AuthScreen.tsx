@@ -76,17 +76,8 @@ export default function AuthScreen({ onLogin }: AuthScreenProps) {
             <div className="relative w-full max-w-md mx-4 animate-in fade-in zoom-in duration-500">
                 {/* Terminal Window Frame */}
                 <div className="relative bg-[var(--panel-bg)] border-2 border-[var(--border-color)] shadow-[0_0_40px_rgba(0,255,159,0.15)]">
-                    {/* Top Terminal Bar */}
-                    <div className="relative h-7 bg-[var(--code-header-bg)] border-b-2 border-[var(--border-color)] flex items-center px-3 gap-2">
-                        {/* Terminal Buttons */}
-                        <div className="flex gap-1.5">
-                            <div className="w-2.5 h-2.5 bg-[var(--error-color)] shadow-[0_0_6px_var(--error-color)]"></div>
-                            <div className="w-2.5 h-2.5 bg-[var(--warning-color)] shadow-[0_0_6px_var(--warning-color)]"></div>
-                            <div className="w-2.5 h-2.5 bg-[var(--success-color)] shadow-[0_0_6px_var(--success-color)]"></div>
-                        </div>
-                        {/* Glow effect at top */}
-                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[var(--accent-primary)] to-transparent opacity-60"></div>
-                    </div>
+                    {/* Top accent line */}
+                    <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[var(--accent-primary)] to-transparent opacity-60"></div>
 
                     {/* Content Area */}
                     <div className="p-5">
