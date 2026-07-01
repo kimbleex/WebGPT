@@ -94,10 +94,21 @@ const translations = {
                 id: "ID",
                 username: "Username",
                 role: "Role",
+                status: "Status",
                 createdAt: "Created At",
                 expiresAt: "Expires At",
+                actions: "Actions",
                 noUsers: "No users found",
                 loading: "Loading...",
+            },
+            actions: {
+                active: "Active",
+                disabled: "Disabled",
+                disable: "Disable",
+                enable: "Enable",
+                extend: "Extend",
+                extendHours: "Hours",
+                invalidHours: "Enter a valid hour value",
             },
             pagination: {
                 previous: "Previous",
@@ -244,10 +255,21 @@ const translations = {
                 id: "ID",
                 username: "用户名",
                 role: "角色",
+                status: "状态",
                 createdAt: "创建时间",
                 expiresAt: "过期时间",
+                actions: "操作",
                 noUsers: "未找到用户",
                 loading: "加载中...",
+            },
+            actions: {
+                active: "启用",
+                disabled: "禁用",
+                disable: "禁用",
+                enable: "启用",
+                extend: "延期",
+                extendHours: "小时",
+                invalidHours: "请输入有效小时数",
             },
             pagination: {
                 previous: "上一页",
@@ -336,12 +358,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
     const t = (path: string) => {
         const keys = path.split(".");
-        let current: any = translations[language];
+        let current: unknown = translations[language];
         for (const key of keys) {
-            if (current[key] === undefined) return path;
-            current = current[key];
+            if (typeof current !== "object" || current === null || !(key in current)) return path;
+            current = (current as Record<string, unknown>)[key];
         }
-        return current;
+        return typeof current === "string" ? current : path;
     };
 
     return (

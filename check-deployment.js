@@ -139,7 +139,9 @@ try {
 
 const requiredEnvVars = [
   'DATABASE_URL',
-  'API_KEY',
+  'OPENAI_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'DPSK_API_KEY',
   'ADMIN_USERNAME',
   'ADMIN_PASSWORD',
   'JWT_SECRET'

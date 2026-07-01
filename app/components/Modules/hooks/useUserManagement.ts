@@ -6,6 +6,7 @@ interface User {
     role: string;
     created_at: number;
     expires_at: number;
+    is_disabled: boolean;
 }
 
 interface UseUserManagementReturn {
@@ -15,6 +16,7 @@ interface UseUserManagementReturn {
     page: number;
     totalPages: number;
     fetchUsers: (page?: number, limit?: number) => Promise<void>;
+    updateUserAccess: (userId: number, action: "disable" | "enable" | "extend", hours?: number) => Promise<boolean>;
     setPage: (page: number) => void;
 }
 
@@ -43,6 +45,30 @@ export function useUserManagement(): UseUserManagementReturn {
         }
     }, []);
 
+    const updateUserAccess = useCallback(async (userId: number, action: "disable" | "enable" | "extend", hours?: number) => {
+        setLoading(true);
+        try {
+            const res = await fetch("/api/admin/users", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId, action, hours }),
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || "Failed to update user");
+            }
+
+            await fetchUsers(page, 10);
+            return true;
+        } catch (error) {
+            alert(error instanceof Error ? error.message : "Failed to update user");
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    }, [fetchUsers, page]);
+
     return {
         users,
         loading,
@@ -50,6 +76,7 @@ export function useUserManagement(): UseUserManagementReturn {
         page,
         totalPages,
         fetchUsers,
+        updateUserAccess,
         setPage
     };
 }

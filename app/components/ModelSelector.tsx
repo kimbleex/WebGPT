@@ -22,6 +22,13 @@ export const MODELS = [
         description: "Anthropic 的旗舰模型",
         icon: "🧠"
     },
+    {
+        id: "deepseek-v4-pro",
+        name: "DeepSeek V4 Pro",
+        provider: "deepseek",
+        description: "DeepSeek 高性能模型",
+        icon: "🔎"
+    },
 ];
 
 export default function ModelSelector({ selectedModel, onModelChange }: ModelSelectorProps) {

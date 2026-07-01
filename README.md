@@ -26,12 +26,17 @@ npm install
 # 你的访问密码（用户必须输入此密码才能使用）
 ACCESS_PASSWORD=your_secure_password
 
-# 你的 OpenAI API Key (或兼容的 API Key)
-API_KEY=sk-xxxxxxxxxxxxxxxxxxxx
+# OpenAI 模型配置
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_BASE_URL=https://api.openai.com/v1
 
-# API 基础地址 (可选，默认为 https://api.openai.com/v1)
-# 如果使用中转服务，请修改此地址，例如：https://api.deepseek.com/v1
-BASE_URL=https://api.openai.com/v1
+# Claude 模型配置
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+ANTHROPIC_BASE_URL=https://api.anthropic.com/v1
+
+# DeepSeek 模型配置
+DPSK_API_KEY=your_deepseek_api_key_here
+DPSK_BASE_URL=https://api.deepseek.com/v1
 
 # 用户信息配置 (可选)
 NEXT_PUBLIC_USER_NAME=WebGPT User
@@ -63,8 +68,12 @@ npm run dev
 2. 在 Vercel 中导入本项目。
 3. 在 **Environment Variables** (环境变量) 设置中添加上述变量：
    - `ACCESS_PASSWORD`
-   - `API_KEY`
-   - `BASE_URL` (可选)
+   - `OPENAI_API_KEY`
+   - `OPENAI_BASE_URL` (可选)
+   - `ANTHROPIC_API_KEY`
+   - `ANTHROPIC_BASE_URL` (可选)
+   - `DPSK_API_KEY`
+   - `DPSK_BASE_URL` (可选)
    - `NEXT_PUBLIC_USER_NAME` (可选)
    - `NEXT_PUBLIC_USER_DESCRIPTION` (可选)
    - `NEXT_PUBLIC_USER_AVATAR` (可选)
